@@ -1,72 +1,76 @@
 import socket
 import threading
 import struct
-import time
 
+# שמירה על מצב המשחק
+player_positions = {1: (0, 0), 2: (0, 0), 3: (0, 0)}
 
-data = {
-    "player1": {"x": 500, "y": 300},
-    "player2": {"x": 300, "y": 200},
-    "player3": {"x": 350, "y": 600},
-}
+def broadcast_positions(clients):
+    """
+    שולח לכל השחקנים את המיקומים של כולם.
+    """
+    for client_socket in clients.values():
+        if client_socket:
+            data = struct.pack(
+                "6i", 
+                *player_positions[1], 
+                *player_positions[2], 
+                *player_positions[3]
+            )
+            client_socket.sendall(data)
 
+def handle_client(client_socket, player_id, clients):
+    """
+    מטפל בכל לקוח ומעדכן את המיקום שלו.
+    """
+    try:
+        while True:
+            # קבלת המיקום מהלקוח (שולח 3 ערכים: player_id, x, y)
+            data = client_socket.recv(12)  # 12 בתים ל-3 מספרים שלמים
+            if not data:
+                break
+            
+            # פירוק הנתונים
+            received_id, x, y = struct.unpack("3i", data)
+            
+            # וידוא שהעדכון מתאים לשחקן הנכון
+            if received_id == player_id:
+                player_positions[player_id] = (x, y)
+                print(f"Player {player_id} updated position to: {x}, {y}")
+                
+                # שידור המיקומים לכל השחקנים
+                broadcast_positions(clients)
+    except Exception as e:
+        print(f"Error with player {player_id}: {e}")
+    finally:
+        client_socket.close()
+        del clients[player_id]
 
-def send_data(client_socket: socket.socket):
-    global data
+def main():
+    """
+    פונקציית השרת הראשית.
+    """
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("0.0.0.0", 5555))
+    server.listen(3)
+    print("Server listening on port 5555...")
 
-    while True:
-        flattened_data = (
-            data["player1"]["x"],
-            data["player1"]["y"],
-            data["player2"]["x"],
-            data["player2"]["y"],
-            data["player3"]["x"],
-            data["player3"]["y"],
-        )
-        packed_data = struct.pack("6i", *flattened_data)
+    clients = {}
+    player_id = 1
 
-        client_socket.sendall(packed_data)
+    while player_id <= 3:
+        client_socket, client_address = server.accept()
+        print(f"Player {player_id} connected from {client_address}")
 
-        time.sleep(0.1)
+        # שליחת מזהה השחקן ללקוח
+        client_socket.sendall(struct.pack("i", player_id))
 
+        # שמירת הלקוח ברשימת הלקוחות
+        clients[player_id] = client_socket
 
-def update_data(client_socket: socket.socket):
-    global data
-
-    while True:
-        client_message = client_socket.recv(16)
-
-        player_to_update, increment_x, increment_y = struct.unpack(
-            "7sii", client_message
-        )
-
-        if not client_message:
-            break
-
-        data[bytes(player_to_update).decode()]["x"] += increment_x
-        data[bytes(player_to_update).decode()]["y"] += increment_y
-
-        print(
-            f"Updated {bytes(player_to_update).decode()} with x: {increment_x} and y: {increment_y}"
-        )
-
-
-def start_server(host="0.0.0.0", port=443):
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind((host, port))
-    server_socket.listen(5)
-    print(f"Server started on {host}:{port}. Waiting for connections...")
-
-    while True:
-        client_socket, client_address = server_socket.accept()
-        print(f"Connection established with {client_address}")
-
-        send_thread = threading.Thread(target=send_data, args=(client_socket,))
-        send_thread.start()
-
-        update_thread = threading.Thread(target=update_data, args=(client_socket,))
-        update_thread.start()
-
+        # יצירת חוט לטיפול בלקוח
+        threading.Thread(target=handle_client, args=(client_socket, player_id, clients)).start()
+        player_id += 1
 
 if __name__ == "__main__":
-    start_server()
+    main()
