@@ -44,18 +44,21 @@ def main():
     # קבלת מזהה שחקן מהשרת
     player_id = struct.unpack("i", client.recv(4))[0]
 
-    # יצירת שחקנים ורצפה
+    # יצירת שחקנים
     colors = [(255, 0, 0), (0, 0, 255), (0, 255, 0)]  # צבעים לכל שחקן
     players = [Player(i, 100 * i, 400, colors[i - 1]) for i in range(1, 4)]
     local_player = players[player_id - 1]
-    floors = [Floor(0, 500, 800, 100), Floor(0,400,100,100)]  # ריצפה אחת פלוס ריצפה שהוספתי
 
-    #לעשות בדיקה גם בצדדים של הריצפות כדי להיתקע בהם ולהעביר אותן דרך השרת ככה שהשחקנים יראו את אותו הדבר
+    # יצירת רצפות
+    floors = [
+        Floor(0, 500, 800, 50),  # רצפה תחתונה
+        Floor(200, 350, 200, 20),  # רצפה אמצעית
+        Floor(400, 250, 200, 20),  # רצפה עליונה
+    ]
 
     # חוט לקבלת מיקומים משרת
     threading.Thread(target=receive_positions, args=(client, players)).start()
 
-    # לולאת המשחק
     running = True
     while running:
         screen.fill(WHITE)  # רקע לבן
@@ -66,16 +69,36 @@ def main():
 
         # קלט מהמשתמש
         keys = pygame.key.get_pressed()
-        local_player.update(keys, floors, players)  # עדכון השחקן המקומי
-        local_player.send_position(client)  # שליחת מיקום לשרת
 
-        # ציור הרצפה והשחקנים
+        # עדכון פיזיקה לשחקנים
+        if player_id == 1:  # שחקן 1 מחובר לשחקן 2
+            rope_data = (players[1], 200)  # חבל באורך 200 פיקסלים
+            local_player.update(keys, floors, players, rope_data)
+        elif player_id == 2:  # שחקן 2 מחובר לשחקן 1
+            rope_data = (players[0], 200)
+            local_player.update(keys, floors, players, rope_data)
+        else:  # שחקן 3 אינו מחובר
+            local_player.update(keys, floors, players)
+
+        # שליחת מיקום לשרת
+        local_player.send_position(client)
+
+        # ציור רצפה ושחקנים
         for floor in floors:
             floor.draw(screen)
         for player in players:
             player.draw(screen)
 
-        # עדכון המסך
+        # ציור חבל בין שחקן 1 ל-2
+        if len(players) >= 2:
+            pygame.draw.line(
+                screen,
+                (0, 0, 0),  # צבע החבל: שחור
+                players[0].rect.center,
+                players[1].rect.center,
+                2,  # עובי החבל
+            )
+
         pygame.display.flip()
         clock.tick(FPS)
 

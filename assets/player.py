@@ -1,5 +1,6 @@
 import pygame
 import struct
+import math
 
 class Player:
     def __init__(self, player_id, start_x, start_y, color):
@@ -85,7 +86,23 @@ class Player:
                     self.rect.top = player.rect.bottom
                     self.velocity_y = 0
 
-    def update(self, keys, floors, players):
+    def apply_rope(self, other_player, rope_length):
+        """בודק ומיישם את השפעת החבל בין שני השחקנים."""
+        dx = other_player.rect.centerx - self.rect.centerx
+        dy = other_player.rect.centery - self.rect.centery
+        distance = math.sqrt(dx**2 + dy**2)
+
+        if distance > rope_length:  # אם המרחק עולה על אורך החבל
+            # חישוב הכוח שמושך את השחקנים זה לזה
+            pull_factor = (distance - rope_length) * 0.1
+            angle = math.atan2(dy, dx)
+
+            self.rect.x += int(math.cos(angle) * pull_factor)
+            self.rect.y += int(math.sin(angle) * pull_factor)
+            other_player.rect.x -= int(math.cos(angle) * pull_factor)
+            other_player.rect.y -= int(math.sin(angle) * pull_factor)
+
+    def update(self, keys, floors, players, rope_data=None):
         """מעדכן את המיקום, הפיזיקה וההתנגשויות של השחקן."""
         self.handle_input(keys)
         self.rect.x += self.velocity_x
@@ -93,6 +110,10 @@ class Player:
         self.apply_gravity()
         self.rect.y += self.velocity_y
         self.check_vertical_collision(floors, players)  # בדיקת התנגשות אנכית
+
+        # אם יש חבל, מיישם את השפעתו
+        if rope_data:
+            self.apply_rope(*rope_data)
 
     def draw(self, screen):
         """מצייר את השחקן על המסך."""
