@@ -87,7 +87,9 @@ class Player:
                     self.velocity_y = 0
 
     def apply_rope(self, other_player, rope_length):
-        """בודק ומיישם את השפעת החבל בין שני השחקנים."""
+        """
+        בודק ומיישם את השפעת החבל בין שני השחקנים, תוך שמירה על גובה מתאים ותנועה חלקה.
+        """
         dx = other_player.rect.centerx - self.rect.centerx
         dy = other_player.rect.centery - self.rect.centery
         distance = math.sqrt(dx**2 + dy**2)
@@ -97,10 +99,22 @@ class Player:
             pull_factor = (distance - rope_length) * 0.1
             angle = math.atan2(dy, dx)
 
+            # שמירה על תנועה חלקה לאורך ציר ה-X
             self.rect.x += int(math.cos(angle) * pull_factor)
-            self.rect.y += int(math.sin(angle) * pull_factor)
-            other_player.rect.x -= int(math.cos(angle) * pull_factor)
-            other_player.rect.y -= int(math.sin(angle) * pull_factor)
+
+            # שמירה על תנועה חלקה לאורך ציר ה-Y
+            if self.rect.centery < other_player.rect.centery:  # אם השחקן הנוכחי מעל
+                other_player.rect.y -= int(math.sin(angle) * pull_factor)
+            elif self.rect.centery > other_player.rect.centery:  # אם השחקן הנוכחי מתחת
+                self.rect.y += int(math.sin(angle) * pull_factor)
+
+            # מניעת קפיצות ושיגורים
+            if distance - rope_length < 1:  # אם המרחק קרוב מאוד לגבול
+                self.rect.x = other_player.rect.x - int(math.cos(angle) * rope_length)
+                self.rect.y = other_player.rect.y - int(math.sin(angle) * rope_length)
+
+
+
 
     def update(self, keys, floors, players, rope_data=None):
         """מעדכן את המיקום, הפיזיקה וההתנגשויות של השחקן."""
