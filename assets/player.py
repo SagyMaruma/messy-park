@@ -3,7 +3,7 @@ import struct
 import math
 
 class Player:
-    def __init__(self, player_id, start_x, start_y, color):
+    def __init__(self, player_id, start_x, start_y, color, image_path):
         """
         אתחול שחקן.
         :param player_id: מזהה השחקן
@@ -13,6 +13,21 @@ class Player:
         """
         self.player_id = player_id
         self.rect = pygame.Rect(start_x, start_y, 50, 50)  # ריבוע בגודל 50x50
+
+        # טעינת תמונות האנימציה
+        self.walk_images_right = [
+            pygame.transform.scale(pygame.image.load("player_walk_1.png").convert_alpha(), (250, 400)),
+            pygame.transform.scale(pygame.image.load("player_walk_2.png").convert_alpha(), (250, 400))
+        ]
+        self.walk_images_left = [
+            pygame.transform.flip(img, True, False) for img in self.walk_images_right
+        ]
+
+        self.original_image_right = pygame.image.load(image_path).convert_alpha()  # Load the original player image
+        self.original_image_right = pygame.transform.scale(self.original_image_right, (250, 400))
+        self.original_image_left = pygame.transform.flip(self.original_image_right, True, False)
+
+        self.image = self.original_image_right  # התמונה הפעילה כרגע
         self.color = color
         self.velocity_x = 0
         self.velocity_y = 0
@@ -20,14 +35,20 @@ class Player:
         self.jump_speed = -15
         self.is_jumping = False
         self.is_double_jumping = False  # דגל לדאבל קפיצה
+        self.facing_right = True  # דגל לכיוון המבט
+        self.walk_frame = 0  # פריים נוכחי באנימציה
+        self.frame_counter = 0  # מונה פריימים לצורך מעבר בין פריימים באנימציה
 
     def handle_input(self, keys):
         """מטפל בקלט מהשחקן לתנועה וקפיצה."""
         self.velocity_x = 0
         if keys[pygame.K_a]:  # תנועה שמאלה
             self.velocity_x = -5
+            self.facing_right = False
+
         if keys[pygame.K_d]:  # תנועה ימינה
             self.velocity_x = 5
+            self.facing_right = True
 
         # קפיצה ראשונה (W)
         if keys[pygame.K_w] and not self.is_jumping:
@@ -57,6 +78,7 @@ class Player:
             if player != self and self.rect.colliderect(player.rect):  # לא בודק את עצמו
                 if self.velocity_x > 0:  # תנועה ימינה
                     self.rect.right = player.rect.left
+                    
                 elif self.velocity_x < 0:  # תנועה שמאלה
                     self.rect.left = player.rect.right
                 self.velocity_x = 0  # עצירה בהתנגשות
@@ -108,14 +130,6 @@ class Player:
             elif self.rect.centery > other_player.rect.centery:  # אם השחקן הנוכחי מתחת
                 self.rect.y += int(math.sin(angle) * pull_factor)
 
-            # מניעת קפיצות ושיגורים
-            if distance - rope_length < 1:  # אם המרחק קרוב מאוד לגבול
-                self.rect.x = other_player.rect.x - int(math.cos(angle) * rope_length)
-                self.rect.y = other_player.rect.y - int(math.sin(angle) * rope_length)
-
-
-
-
     def update(self, keys, floors, players, rope_data=None):
         """מעדכן את המיקום, הפיזיקה וההתנגשויות של השחקן."""
         self.handle_input(keys)
@@ -125,13 +139,30 @@ class Player:
         self.rect.y += self.velocity_y
         self.check_vertical_collision(floors, players)  # בדיקת התנגשות אנכית
 
-        # אם יש חבל, מיישם את השפעתו
+        # הפעלת החבל אם יש צורך
         if rope_data:
             self.apply_rope(*rope_data)
 
+        # עדכון התמונה לפי תנועה וכיוון
+        if self.velocity_x != 0:  # אם השחקן בתנועה
+            self.frame_counter += 1
+            if self.frame_counter >= 8:  # מחליף פריים כל 10 פריימים
+                self.walk_frame = (self.walk_frame + 1) % 2
+                self.frame_counter = 0
+            if self.facing_right:
+                self.image = self.walk_images_right[self.walk_frame]
+            else:
+                self.image = self.walk_images_left[self.walk_frame]
+        else:  # כשהשחקן עומד במקום
+            if self.facing_right:
+                self.image = self.original_image_right
+            else:
+                self.image = self.original_image_left
+
     def draw(self, screen):
-        """מצייר את השחקן על המסך."""
-        pygame.draw.rect(screen, self.color, self.rect)
+        """מצייר את הריבוע עם התמונה ממורכזת בתוכו."""
+        image_rect = self.image.get_rect(center=self.rect.center)
+        screen.blit(self.image, image_rect.topleft)
 
     def send_position(self, client_socket):
         """שולח את המיקום הנוכחי לשרת."""

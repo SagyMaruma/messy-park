@@ -46,7 +46,7 @@ def main():
 
     # יצירת שחקנים
     colors = [(255, 0, 0), (0, 0, 255), (0, 255, 0)]  # צבעים לכל שחקן
-    players = [Player(i, 100 * i, 400, colors[i - 1]) for i in range(1, 4)]
+    players = [Player(i, 100 * i, 400, colors[i - 1],"player1.png" ) for i in range(1, 4)]
     local_player = players[player_id - 1]
 
     # יצירת רצפות
