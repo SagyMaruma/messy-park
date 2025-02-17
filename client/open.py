@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import (
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
-from PyQt5.QtGui import QFont, QPixmap, QIcon  # Import QIcon
+from PyQt5.QtGui import QFont, QPixmap, QIcon
 
 
 class GameWindow(QWidget):
@@ -18,9 +18,7 @@ class GameWindow(QWidget):
         super().__init__()
 
         self.setWindowTitle("Game Login")
-        self.setGeometry(
-            100, 100, 500, 300
-        )  # Larger window size for the game-like interface
+        self.setGeometry(100, 100, 500, 300)
 
         # Set a custom window icon
         self.setWindowIcon(

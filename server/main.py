@@ -5,6 +5,7 @@ import struct
 # שמירה על מצב המשחק
 player_positions = {1: (0, 0), 2: (0, 0), 3: (0, 0)}
 
+
 def broadcast_positions(clients):
     """
     שולח לכל השחקנים את המיקומים של כולם.
@@ -12,12 +13,10 @@ def broadcast_positions(clients):
     for client_socket in clients.values():
         if client_socket:
             data = struct.pack(
-                "6i", 
-                *player_positions[1], 
-                *player_positions[2], 
-                *player_positions[3]
+                "6i", *player_positions[1], *player_positions[2], *player_positions[3]
             )
             client_socket.sendall(data)
+
 
 def handle_client(client_socket, player_id, clients):
     """
@@ -29,15 +28,15 @@ def handle_client(client_socket, player_id, clients):
             data = client_socket.recv(12)  # 12 בתים ל-3 מספרים שלמים
             if not data:
                 break
-            
+
             # פירוק הנתונים
             received_id, x, y = struct.unpack("3i", data)
-            
+
             # וידוא שהעדכון מתאים לשחקן הנכון
             if received_id == player_id:
                 player_positions[player_id] = (x, y)
                 print(f"Player {player_id} updated position to: {x}, {y}")
-                
+
                 # שידור המיקומים לכל השחקנים
                 broadcast_positions(clients)
     except Exception as e:
@@ -45,6 +44,7 @@ def handle_client(client_socket, player_id, clients):
     finally:
         client_socket.close()
         del clients[player_id]
+
 
 def main():
     """
@@ -69,8 +69,11 @@ def main():
         clients[player_id] = client_socket
 
         # יצירת חוט לטיפול בלקוח
-        threading.Thread(target=handle_client, args=(client_socket, player_id, clients)).start()
+        threading.Thread(
+            target=handle_client, args=(client_socket, player_id, clients)
+        ).start()
         player_id += 1
+
 
 if __name__ == "__main__":
     main()
