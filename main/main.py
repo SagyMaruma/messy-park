@@ -40,7 +40,7 @@ class ServerConnectionWindow(QWidget):
         layout = QVBoxLayout()
         layout.setSpacing(15)
 
-        # text.
+        # text for the IP.
         self.label = QLabel("Enter IP address:", self)
         self.label.setAlignment(Qt.AlignCenter)
         self.label.setStyleSheet("font-size: 18px; color: black;")
@@ -53,6 +53,19 @@ class ServerConnectionWindow(QWidget):
             "font-size: 16px; padding: 10px; border-radius: 8px; background-color: white; border: 2px solid #FF7F00;"
         )
         layout.addWidget(self.ip_input)
+
+        # text for the name.
+        self.label = QLabel("Name:", self)
+        self.label.setAlignment(Qt.AlignCenter)
+        self.label.setStyleSheet("font-size: 18px; color: black;")
+        layout.addWidget(self.label)
+        # text box(where the Name address is). still needed to be fixed later need to make it a variable and sent to the server after login.
+        self.name_input = QLineEdit(self)
+        self.name_input.setPlaceholderText("example: sagy")
+        self.name_input.setStyleSheet(
+            "font-size: 16px; padding: 10px; border-radius: 8px; background-color: white; border: 2px solid #FF7F00;"
+        )
+        layout.addWidget(self.name_input)
 
         # login button.
         self.connect_button = QPushButton("Login", self)
@@ -98,7 +111,7 @@ class ClientWindow(QWidget):
 
     def init_ui(self):
         # Gui design style.
-        self.label = QLabel(f"Conected to the IP: {self.ip_address}...", self)
+        self.label = QLabel(f"connected successfully how was the game? good...", self)
         self.label.setAlignment(Qt.AlignCenter)
         self.label.setStyleSheet("font-size: 20px; color: black;")
         self.setLayout(QVBoxLayout())
