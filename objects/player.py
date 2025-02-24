@@ -2,6 +2,7 @@ import pygame
 import struct
 import math
 
+
 class Player:
     def __init__(self, player_id, start_x, start_y, color, image_path):
         """
@@ -12,56 +13,68 @@ class Player:
         :param color: צבע הריבוע של השחקן
         """
         self.player_id = player_id
-        self.rect = pygame.Rect(start_x, start_y, 50, 50)  # ריבוע בגודל 50x50
+        self.rect = pygame.Rect(start_x, start_y, 50, 50)  # sqaure size 50x50.
 
-        # טעינת תמונות האנימציה
+        # loading aniamtion images.
         self.walk_images_right = [
-            pygame.transform.scale(pygame.image.load("player_walk_1.png").convert_alpha(), (250, 400)),
-            pygame.transform.scale(pygame.image.load("player_walk_2.png").convert_alpha(), (250, 400))
+            pygame.transform.scale(
+                pygame.image.load("player_walk_1.png").convert_alpha(), (250, 400)
+            ),
+            pygame.transform.scale(
+                pygame.image.load("player_walk_2.png").convert_alpha(), (250, 400)
+            ),
         ]
         self.walk_images_left = [
             pygame.transform.flip(img, True, False) for img in self.walk_images_right
         ]
 
-        self.original_image_right = pygame.image.load(image_path).convert_alpha()  # Load the original player image
-        self.original_image_right = pygame.transform.scale(self.original_image_right, (250, 400))
-        self.original_image_left = pygame.transform.flip(self.original_image_right, True, False)
+        self.original_image_right = pygame.image.load(
+            image_path
+        ).convert_alpha()  # Load the original player image
+        self.original_image_right = pygame.transform.scale(
+            self.original_image_right, (250, 400)
+        )
+        self.original_image_left = pygame.transform.flip(
+            self.original_image_right, True, False
+        )
 
-        self.image = self.original_image_right  # התמונה הפעילה כרגע
+        self.image = (
+            self.original_image_right
+        )  # the current image (it can be left or right).
         self.color = color
         self.velocity_x = 0
         self.velocity_y = 0
         self.gravity = 0.8
         self.jump_speed = -15
         self.is_jumping = False
-        self.is_double_jumping = False  # דגל לדאבל קפיצה
-        self.facing_right = True  # דגל לכיוון המבט
-        self.walk_frame = 0  # פריים נוכחי באנימציה
-        self.frame_counter = 0  # מונה פריימים לצורך מעבר בין פריימים באנימציה
+        self.is_double_jumping = False  # bl for double jump.
+        self.facing_right = True  # bl for the left right dircation.
+        self.walk_frame = 0  # current frame for the walk aniamtion.
+        self.frame_counter = 0  # frame counter.
 
     def handle_input(self, keys):
-        """מטפל בקלט מהשחקן לתנועה וקפיצה."""
+        # movment of the playe.
         self.velocity_x = 0
-        if keys[pygame.K_a]:  # תנועה שמאלה
+        if keys[pygame.K_a]:  # walking to the left.
             self.velocity_x = -5
             self.facing_right = False
 
-        if keys[pygame.K_d]:  # תנועה ימינה
+        if keys[pygame.K_d]:  # walking to righ.
             self.velocity_x = 5
             self.facing_right = True
 
-        # קפיצה ראשונה (W)
+        # First jump (W).
         if keys[pygame.K_w] and not self.is_jumping:
             self.is_jumping = True
             self.velocity_y = self.jump_speed
 
-        # דאבל קפיצה (SPACE)
+        # Double jump (SPACE).
         if keys[pygame.K_SPACE] and self.is_jumping and not self.is_double_jumping:
             self.is_double_jumping = True
             self.velocity_y = self.jump_speed
 
     def apply_gravity(self):
-        """מוסיף כוח משיכה לשחקן."""
+        # adding gravity for the player.
         self.velocity_y += self.gravity
 
     def check_horizontal_collision(self, floors, players):
@@ -78,7 +91,7 @@ class Player:
             if player != self and self.rect.colliderect(player.rect):  # לא בודק את עצמו
                 if self.velocity_x > 0:  # תנועה ימינה
                     self.rect.right = player.rect.left
-                    
+
                 elif self.velocity_x < 0:  # תנועה שמאלה
                     self.rect.left = player.rect.right
                 self.velocity_x = 0  # עצירה בהתנגשות
