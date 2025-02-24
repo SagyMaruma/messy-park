@@ -5,13 +5,7 @@ import math
 
 class Player:
     def __init__(self, player_id, start_x, start_y, color, image_path):
-        """
-        אתחול שחקן.
-        :param player_id: מזהה השחקן
-        :param start_x: מיקום התחלתי ב-X
-        :param start_y: מיקום התחלתי ב-Y
-        :param color: צבע הריבוע של השחקן
-        """
+        #player class, start position, color and image path.
         self.player_id = player_id
         self.rect = pygame.Rect(start_x, start_y, 50, 50)  # sqaure size 50x50.
 
@@ -80,111 +74,110 @@ class Player:
         self.velocity_y += self.gravity
 
     def check_horizontal_collision(self, floors, players):
-        """בודק התנגשות אופקית עם הרצפה והשחקנים האחרים."""
+        """checks the horizontal collision with the floors and other players."""
         for floor in floors:
             if self.rect.colliderect(floor.rect):
-                if self.velocity_x > 0:  # תנועה ימינה
+                if self.velocity_x > 0:  # right
                     self.rect.right = floor.rect.left
-                elif self.velocity_x < 0:  # תנועה שמאלה
+                elif self.velocity_x < 0:  # left 
                     self.rect.left = floor.rect.right
-                self.velocity_x = 0  # עצירה בהתנגשות
+                self.velocity_x = 0  # stop the movement when collision.
 
         for player in players:
-            if player != self and self.rect.colliderect(player.rect):  # לא בודק את עצמו
-                if self.velocity_x > 0:  # תנועה ימינה
+            if player != self and self.rect.colliderect(player.rect):
+                if self.velocity_x > 0:  # right
                     self.rect.right = player.rect.left
 
-                elif self.velocity_x < 0:  # תנועה שמאלה
+                elif self.velocity_x < 0:  # left
                     self.rect.left = player.rect.right
-                self.velocity_x = 0  # עצירה בהתנגשות
+                self.velocity_x = 0  # stop the movement when collision.
 
     def check_vertical_collision(self, floors, players):
-        """בודק התנגשות אנכית עם הרצפה והשחקנים האחרים."""
+        """checks the vertical collision with the floors and other players."""
         self.is_jumping = True
         for floor in floors:
             if self.rect.colliderect(floor.rect):
-                if self.velocity_y > 0:  # נופל ופוגע ברצפה
+                if self.velocity_y > 0:  # fall into the floor.
                     self.rect.bottom = floor.rect.top
                     self.velocity_y = 0
                     self.is_jumping = False
-                    self.is_double_jumping = False  # מאתחל דאבל קפיצה
-                elif self.velocity_y < 0:  # קופץ ופוגע בתקרה
+                    self.is_double_jumping = False  # start again jumping
+                elif self.velocity_y < 0:  # check clossion with the floor from the bottom.
                     self.rect.top = floor.rect.bottom
                     self.velocity_y = 0
 
+        # check collision with other player.
         for player in players:
-            if player != self and self.rect.colliderect(player.rect):  # לא בודק את עצמו
-                if self.velocity_y > 0:  # נופל ופוגע בשחקן אחר
+            if player != self and self.rect.colliderect(player.rect):  # check collision with other player.
+                if self.velocity_y > 0:  # fall on other player.
                     self.rect.bottom = player.rect.top
                     self.velocity_y = 0
                     self.is_jumping = False
-                    self.is_double_jumping = False  # מאתחל דאבל קפיצה
-                elif self.velocity_y < 0:  # קופץ ופוגע בתחתית שחקן אחר
+                    self.is_double_jumping = False  # start again jumping
+                elif self.velocity_y < 0:  # check collision with other player from the bottom.
                     self.rect.top = player.rect.bottom
                     self.velocity_y = 0
 
     def apply_rope(self, other_player, rope_length):
         """
-        בודק ומיישם את השפעת החבל בין שני השחקנים, תוך שמירה על גובה מתאים ותנועה חלקה.
+        checks and applies the rope force between the two players.
         """
         dx = other_player.rect.centerx - self.rect.centerx
         dy = other_player.rect.centery - self.rect.centery
         distance = math.sqrt(dx**2 + dy**2)
 
-        if distance > rope_length:  # אם המרחק עולה על אורך החבל
-            # חישוב הכוח שמושך את השחקנים זה לזה
+        if distance > rope_length:  # if the distance is more than the rope length
+            # calculate the pull factor and angle between the two players.
             pull_factor = (distance - rope_length) * 0.1
             angle = math.atan2(dy, dx)
 
-            # שמירה על תנועה חלקה לאורך ציר ה-X
             self.rect.x += int(math.cos(angle) * pull_factor)
 
-            # שמירה על תנועה חלקה לאורך ציר ה-Y
-            if self.rect.centery < other_player.rect.centery:  # אם השחקן הנוכחי מעל
+            if self.rect.centery < other_player.rect.centery:  # if the player above
                 other_player.rect.y -= int(math.sin(angle) * pull_factor)
-            elif self.rect.centery > other_player.rect.centery:  # אם השחקן הנוכחי מתחת
+            elif self.rect.centery > other_player.rect.centery:  # if the player below
                 self.rect.y += int(math.sin(angle) * pull_factor)
 
     def update(self, keys, floors, players, rope_data=None):
-        """מעדכן את המיקום, הפיזיקה וההתנגשויות של השחקן."""
+        """updates the player's position and checks for collisions."""
         self.handle_input(keys)
         self.rect.x += self.velocity_x
-        self.check_horizontal_collision(floors, players)  # בדיקת התנגשות אופקית
+        self.check_horizontal_collision(floors, players)  # checks horizontal collision
         self.apply_gravity()
         self.rect.y += self.velocity_y
-        self.check_vertical_collision(floors, players)  # בדיקת התנגשות אנכית
+        self.check_vertical_collision(floors, players)  # check vertical collision
 
-        # הפעלת החבל אם יש צורך
+        # start the rope.
         if rope_data:
             self.apply_rope(*rope_data)
 
-        # עדכון התמונה לפי תנועה וכיוון
-        if self.velocity_x != 0:  # אם השחקן בתנועה
+        # update the animation of the player.
+        if self.velocity_x != 0:  
             self.frame_counter += 1
-            if self.frame_counter >= 8:  # מחליף פריים כל 10 פריימים
+            if self.frame_counter >= 8:  #change the frame evry 10 frames.
                 self.walk_frame = (self.walk_frame + 1) % 2
                 self.frame_counter = 0
             if self.facing_right:
                 self.image = self.walk_images_right[self.walk_frame]
             else:
                 self.image = self.walk_images_left[self.walk_frame]
-        else:  # כשהשחקן עומד במקום
+        else:  # if the player is not moving, keep the original image.
             if self.facing_right:
                 self.image = self.original_image_right
             else:
                 self.image = self.original_image_left
 
     def draw(self, screen):
-        """מצייר את הריבוע עם התמונה ממורכזת בתוכו."""
+        """draw the player on the screen."""
         image_rect = self.image.get_rect(center=self.rect.center)
         screen.blit(self.image, image_rect.topleft)
 
     def send_position(self, client_socket):
-        """שולח את המיקום הנוכחי לשרת."""
+        """sends the player's position to the other players(server)."""
         data = struct.pack("3i", self.player_id, self.rect.x, self.rect.y)
         client_socket.sendall(data)
 
     def update_position(self, x, y):
-        """מעדכן את מיקום השחקן לפי נתוני שרת."""
+        """upades the player's position(from the server)."""
         self.rect.x = x
         self.rect.y = y

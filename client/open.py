@@ -19,7 +19,7 @@ class GameWindow(QWidget):
 
         self.setWindowTitle("Game Login")
         self.setGeometry(
-            100, 100, 500, 300
+            100, 100, 400, 300
         )  # Larger window size for the game-like interface
 
         # Set a custom window icon

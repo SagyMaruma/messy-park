@@ -2,12 +2,12 @@ import socket
 import threading
 import struct
 
-# שמירה על מצב המשחק
+# save the game state for all players. The keys are player_ids and the values are tuples of (x, y) coordinates. 1-indexed. 3 players maximum. 6 integers for each
 player_positions = {1: (0, 0), 2: (0, 0), 3: (0, 0)}
 
 def broadcast_positions(clients):
     """
-    שולח לכל השחקנים את המיקומים של כולם.
+    sent the all players' positions to all connected clients.
     """
     for client_socket in clients.values():
         if client_socket:
@@ -21,24 +21,24 @@ def broadcast_positions(clients):
 
 def handle_client(client_socket, player_id, clients):
     """
-    מטפל בכל לקוח ומעדכן את המיקום שלו.
+    handle the client and update the postions.
     """
     try:
         while True:
-            # קבלת המיקום מהלקוח (שולח 3 ערכים: player_id, x, y)
-            data = client_socket.recv(12)  # 12 בתים ל-3 מספרים שלמים
+            # Getting the postion from the client (sends 3 values: player_id, x, y)
+            data = client_socket.recv(12)  # 12 bytes for 3 integers
             if not data:
                 break
             
-            # פירוק הנתונים
+            # Data decomposition
             received_id, x, y = struct.unpack("3i", data)
             
-            # וידוא שהעדכון מתאים לשחקן הנכון
+            # check that the received id matches the current player_id
             if received_id == player_id:
                 player_positions[player_id] = (x, y)
                 print(f"Player {player_id} updated position to: {x}, {y}")
                 
-                # שידור המיקומים לכל השחקנים
+                # sharing the new positions to all connected clients except the sender
                 broadcast_positions(clients)
     except Exception as e:
         print(f"Error with player {player_id}: {e}")
@@ -48,7 +48,8 @@ def handle_client(client_socket, player_id, clients):
 
 def main():
     """
-    פונקציית השרת הראשית.
+    Main function for the server.
+    Starts the server, listens for clients, and handles each client's connection.
     """
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(("0.0.0.0", 5555))
@@ -62,13 +63,13 @@ def main():
         client_socket, client_address = server.accept()
         print(f"Player {player_id} connected from {client_address}")
 
-        # שליחת מזהה השחקן ללקוח
+        # first send the player_id to the client (1-3)
         client_socket.sendall(struct.pack("i", player_id))
 
-        # שמירת הלקוח ברשימת הלקוחות
+        # save the client_socket in the clients dictionary with the player_id as the key
         clients[player_id] = client_socket
 
-        # יצירת חוט לטיפול בלקוח
+        # create the rope thread for this player
         threading.Thread(target=handle_client, args=(client_socket, player_id, clients)).start()
         player_id += 1
 
