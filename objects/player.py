@@ -18,10 +18,12 @@ class Player:
         # loading aniamtion images.
         self.walk_images_right = [
             pygame.transform.scale(
-                pygame.image.load("player_walk_1.png").convert_alpha(), (250, 400)
+                pygame.image.load("assets/player_walk_1.png").convert_alpha(),
+                (250, 400),
             ),
             pygame.transform.scale(
-                pygame.image.load("player_walk_2.png").convert_alpha(), (250, 400)
+                pygame.image.load("assets/player_walk_2.png").convert_alpha(),
+                (250, 400),
             ),
         ]
         self.walk_images_left = [

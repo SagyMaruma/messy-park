@@ -11,6 +11,12 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
+import sys
+import os
+
+# Open path for evry file in this case I need the client.
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
+
 from client.game_client import run_game
 
 
@@ -78,7 +84,7 @@ class ClientWindow(QWidget):
     def __init__(self, ip_address):
         super().__init__()
         self.ip_address = ip_address
-        self.setWindowTitle("Game")
+        self.setWindowTitle("Info")
         self.setGeometry(0, 0, 800, 600)
         self.center_window()
         self.init_ui()
@@ -92,9 +98,7 @@ class ClientWindow(QWidget):
 
     def init_ui(self):
         # Gui design style.
-        self.label = QLabel(
-            f"Login to the server in the ip: {self.ip_address}...", self
-        )
+        self.label = QLabel(f"Conected to the IP: {self.ip_address}...", self)
         self.label.setAlignment(Qt.AlignCenter)
         self.label.setStyleSheet("font-size: 20px; color: black;")
         self.setLayout(QVBoxLayout())

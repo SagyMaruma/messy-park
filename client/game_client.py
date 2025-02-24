@@ -5,7 +5,7 @@ import threading
 import os
 import sys
 
-# set drication for the objects file.
+# set drication for evry file in this case I need the objects file.
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
 
 from objects.player import Player
@@ -15,10 +15,11 @@ from objects.floor import Floor
 WIDTH, HEIGHT = 1800, 920
 FPS = 60
 WHITE = (255, 255, 255)
+pygame.display.set_caption("Game")
 
 
 def receive_positions(client_socket, players):
-    """מקבל עדכוני מיקומים מהשרת ומעדכן את כל השחקנים."""
+    """gets positions from the server"""
     try:
         while True:
             data = client_socket.recv(24)  # 24 בתים (6 מספרים שלמים)
@@ -41,14 +42,16 @@ def run_game(player_id, client_socket):
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     clock = pygame.time.Clock()
 
-    # create players.
+    # color, in case thier is no assets/images.
     colors = [
         (255, 0, 0),
         (0, 0, 255),
         (0, 255, 0),
-    ]  # color, in case thier is no assets/images.
+    ]
+    # create players.
     players = [
-        Player(i, 100 * i, 400, colors[i - 1], "player1.png") for i in range(1, 4)
+        Player(i, 100 * i, 400, colors[i - 1], "assets/player1.png")
+        for i in range(1, 4)
     ]
     local_player = players[player_id - 1]
 
