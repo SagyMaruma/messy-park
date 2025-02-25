@@ -1,9 +1,4 @@
 pygame
 keyboard
 PyQt5
-socket
-threading
-struct
 math
-os
-sys

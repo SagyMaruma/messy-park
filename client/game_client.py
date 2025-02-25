@@ -42,6 +42,9 @@ def run_game(player_id, client_socket):
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     clock = pygame.time.Clock()
 
+    #font for displaying text    
+    font = pygame.font.SysFont('Arial', 15)
+
     # color, in case thier is no assets/images.
     colors = [
         (255, 0, 0),
@@ -95,6 +98,22 @@ def run_game(player_id, client_socket):
             floor.draw(screen)
         for player in players:
             player.draw(screen)
+
+        for player in players:
+            player.draw(screen)
+
+            # Draw text above each player 
+            player_text = font.render(f"Player {player_id}", True, (255, 255, 255), (176, 176, 176))  # color white, background gray.
+
+            # position of the text above the player.
+            text_x = player.rect.centerx - player_text.get_width() // 2.3
+            text_y = player.rect.top - 40  # 40 pixels above the player.
+            
+            # Draw the text on the screen at the calculated position
+            screen.blit(player_text, (text_x, text_y))
+
+
+
 
         # drawing the rope bet player 1 to player 2.
         if len(players) >= 2:

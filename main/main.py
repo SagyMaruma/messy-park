@@ -51,7 +51,7 @@ class ServerConnectionWindow(QWidget):
         self.ip_input = QLineEdit(self)
         self.ip_input.setPlaceholderText("E.g., 127.0.0.1")
         self.ip_input.setStyleSheet(
-            "font-size: 16px; padding: 10px; border-radius: 10px; background-color: #fff; border: 2px solid #F2A77F;"
+            "font-size: 16px; padding: 10px; border-radius: 10px; background-color: #fff; border: 2px solid #FF7F32 ;"
         )
         layout.addWidget(self.ip_input)
 
@@ -66,14 +66,14 @@ class ServerConnectionWindow(QWidget):
         self.name_input = QLineEdit(self)
         self.name_input.setPlaceholderText("Your Name")
         self.name_input.setStyleSheet(
-            "font-size: 16px; padding: 10px; border-radius: 10px; background-color: #fff; border: 2px solid #F2A77F;"
+            "font-size: 16px; padding: 10px; border-radius: 10px; background-color: #fff; border: 2px solid #FF7F32 ;"
         )
         layout.addWidget(self.name_input)
 
         # Connect Button
         self.connect_button = QPushButton(" Connect", self)
         self.connect_button.setStyleSheet(
-            "font-size: 16px; background-color: #F2A77F; color: white; padding: 12px; border-radius: 10px; font-weight: bold;"
+            "font-size: 16px; background-color: #FF7F32 ; color: white; padding: 12px; border-radius: 10px; font-weight: bold;"
         )
         self.connect_button.clicked.connect(self.connect_to_server)
         layout.addWidget(self.connect_button)
