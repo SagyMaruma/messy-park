@@ -1,39 +1,44 @@
 import socket
-import threading
 import struct
+import threading
 
-# save the game state for all players. The keys are player_ids and the values are tuples of (x, y) coordinates. 1-indexed. 3 players maximum. 6 integers for each
+# store the game state for all players
 player_positions = {1: (0, 0), 2: (0, 0), 3: (0, 0)}
 player_names = ["P1", "P2", "P3"]
 
 def broadcast_positions(clients):
     """
-    sent the all players' positions to all connected clients.
+    Sends all players' positions to all connected clients.
     """
     for client_socket in clients.values():
         if client_socket:
-            data = struct.pack(
+            # Prepare the data to send: 3 players, each with x, y
+            positions_data = struct.pack(
                 "6i", 
                 *player_positions[1], 
                 *player_positions[2], 
                 *player_positions[3]
             )
-            client_socket.sendall(data)
+            # Send the player names (each name is 20 bytes long)
+            names_data = "".join([name.ljust(20) for name in player_names]).encode()
+            # First send the names data, then send the positions data
+            client_socket.sendall(names_data + positions_data)
 
 def handle_client(client_socket, player_id, clients):
     """
-    Handle the client and update the positions and name.
+    Handle the client connection, update the positions, and names.
     """
     try:
-        # קבלת שם השחקן מהלקוח
-        name_data = client_socket.recv(20)  # 20 בתים בשביל שם
+        # Get name from the client
+        name_data = client_socket.recv(20)  # Receive 20 bytes for the player's name
         player_name = name_data.decode().strip()
-        player_names[player_id - 1] = player_name  # עדכון רשימת השמות
+        player_names[player_id - 1] = player_name  # Update the names in the list
 
         print(f"Player {player_id} connected as {player_name}")
 
         while True:
-            data = client_socket.recv(12)  # 12 bytes for 3 integers
+            # Receive player position (12 bytes: 3 integers)
+            data = client_socket.recv(12)
             if not data:
                 break
             
@@ -50,7 +55,6 @@ def handle_client(client_socket, player_id, clients):
     finally:
         client_socket.close()
         del clients[player_id]
-
 
 def main():
     """
@@ -69,13 +73,13 @@ def main():
         client_socket, client_address = server.accept()
         print(f"Player {player_id} connected from {client_address}")
 
-        # first send the player_id to the client (1-3)
+        # First, send the player_id to the client
         client_socket.sendall(struct.pack("i", player_id))
 
-        # save the client_socket in the clients dictionary with the player_id as the key
+        # Save the client_socket in the clients dictionary with the player_id as the key
         clients[player_id] = client_socket
 
-        # create the rope thread for this player
+        # Create a new thread for this player
         threading.Thread(target=handle_client, args=(client_socket, player_id, clients)).start()
         player_id += 1
 

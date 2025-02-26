@@ -106,15 +106,26 @@ def run_game(player_id, client_socket):
         for i, player in enumerate(players):
             player.draw(screen)
 
-            # Draw text above each player with their name if available
-            player_text = font.render(player_names[i] if i < len(player_names) else f"Player {i+1}", True, (255, 255, 255), (176, 176, 176))
+            # Only try to draw name if player_names has enough elements
+            if i < len(player_names):
+                player_text = font.render(player_names[i] if i < len(player_names) else f"Player {i+1}", True, (255, 255, 255), (176, 176, 176))  # white text color.
 
-            # position of the text above the player.
-            text_x = player.rect.centerx - player_text.get_width() // 2.3
-            text_y = player.rect.top - 40  # 40 pixels above the player.
+                # Check if the name is too long. If so, truncate it.
+                if len(player_names[i]) > 10:
+                    player_text = font.render(player_names[i][:10] + "...", True, (255, 255, 255), (176, 176, 176))  # white text color.
 
-            # Draw the text on the screen at the calculated position
-            screen.blit(player_text, (text_x, text_y))
+                # position of the text above the player.
+                text_x = player.rect.centerx - player_text.get_width() // 2.3
+                text_y = player.rect.top - 40  # 40 pixels above the player.
+
+                # Draw the text on the screen at the calculated position
+                screen.blit(player_text, (text_x, text_y))
+            else:
+                # Placeholder text for player name if not yet received
+                placeholder_text = font.render(f"Player {i+1}", True, (255, 255, 255), (176, 176, 176))
+                text_x = player.rect.centerx - placeholder_text.get_width() // 2.3
+                text_y = player.rect.top - 40
+                screen.blit(placeholder_text, (text_x, text_y))
 
         # drawing the rope between player 1 and player 2.
         if len(players) >= 2:
