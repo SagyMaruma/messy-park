@@ -24,13 +24,12 @@ class ServerConnectionWindow(QWidget):
     def __init__(self):
         super().__init__()
         
-        self.setWindowTitle("connect...")
+        self.setWindowTitle("Connect...")
         self.setGeometry(100, 100, 400, 250)
         self.center_window()
         self.init_ui()
 
     def center_window(self):
-        # Open the window in the center of the screen.
         qr = self.frameGeometry()
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
@@ -83,24 +82,31 @@ class ServerConnectionWindow(QWidget):
 
     def connect_to_server(self):
         ip_address = self.ip_input.text().strip()
-        if ip_address:
-            self.start_client(ip_address)
-        else:
+        player_name = self.name_input.text().strip()
+        
+        if not ip_address:
             self.label.setText("Enter a valid IP Address!")
+            return
+        
+        if not player_name:
+            self.label.setText("Enter a valid name!")
+            return
+        
+        self.start_client(ip_address, player_name)
 
-    def start_client(self, ip_address):
-        # Connect to the server and start the client.
-        self.client_window = ClientWindow(ip_address)
+    def start_client(self, ip_address, player_name):
+        self.client_window = ClientWindow(ip_address, player_name)
         self.client_window.show()
         self.close()
 
 
 class ClientWindow(QWidget):
-    # Window that shows player info.
-    def __init__(self, ip_address):
+    def __init__(self, ip_address, player_name):
         super().__init__()
         self.ip_address = ip_address
-        self.setWindowTitle("info")
+        self.player_name = player_name  # Save player name
+        
+        self.setWindowTitle("Info")
         self.setGeometry(100, 100, 800, 600)
         self.center_window()
         self.init_ui()
@@ -113,27 +119,30 @@ class ClientWindow(QWidget):
 
     def init_ui(self):
         layout = QVBoxLayout()
-
-        # Success message
+        
         self.label = QLabel("Connected successfully! How was the game?", self)
         self.label.setAlignment(Qt.AlignCenter)
         self.label.setFont(QFont("Arial", 18, QFont.Bold))
         self.label.setStyleSheet("color: #333;")
         layout.addWidget(self.label)
-
+        
         self.setLayout(layout)
-
+        
         self.connect_to_game_server()
 
     def connect_to_game_server(self):
         try:
             self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.client_socket.connect((self.ip_address, 5555))  # Connect to server
+            self.client_socket.connect((self.ip_address, 5555))
 
-            # Get player ID from the server
+            # Receive player ID from server
             player_id = struct.unpack("i", self.client_socket.recv(4))[0]
 
-            # Start the game
+            # Send player name to server
+            name_data = self.player_name.encode().ljust(20)  # Ensure name is exactly 20 bytes
+            self.client_socket.sendall(name_data)
+
+            # Start game
             self.start_game(player_id)
 
         except Exception as e:
@@ -146,8 +155,6 @@ class ClientWindow(QWidget):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-
     window = ServerConnectionWindow()
     window.show()
-
     sys.exit(app.exec_())

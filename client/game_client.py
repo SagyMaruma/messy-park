@@ -5,7 +5,7 @@ import threading
 import os
 import sys
 
-# set drication for evry file in this case I need the objects file.
+# set direction for every file in this case I need the objects file.
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
 
 from objects.player import Player
@@ -17,12 +17,16 @@ FPS = 60
 WHITE = (255, 255, 255)
 pygame.display.set_caption("Game")
 
-
-def receive_positions(client_socket, players):
-    """gets positions from the server"""
+def receive_data(client_socket, players, player_names):
+    """Receives positions and player names from the server"""
     try:
+        # First, receive player names
+        name_data = client_socket.recv(60)  # Assuming max 3 players, 20 bytes each
+        names = [name_data[i:i+20].decode().strip() for i in range(0, 60, 20)]
+        player_names.extend(names)
+        
         while True:
-            data = client_socket.recv(24)  # 24 בתים (6 מספרים שלמים)
+            data = client_socket.recv(24)  # 24 bytes (6 integers for positions)
             if not data:
                 break
             positions = struct.unpack("6i", data)
@@ -31,10 +35,9 @@ def receive_positions(client_socket, players):
                     positions[(i - 1) * 2], positions[(i - 1) * 2 + 1]
                 )
     except Exception as e:
-        print(f"Error receiving positions: {e}")
+        print(f"Error receiving data: {e}")
     finally:
         client_socket.close()
-
 
 def run_game(player_id, client_socket):
     # starts Pygame
@@ -42,10 +45,10 @@ def run_game(player_id, client_socket):
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     clock = pygame.time.Clock()
 
-    #font for displaying text    
+    # font for displaying text    
     font = pygame.font.SysFont('Arial', 15)
 
-    # color, in case thier is no assets/images.
+    # color, in case there are no assets/images.
     colors = [
         (255, 0, 0),
         (0, 0, 255),
@@ -65,9 +68,10 @@ def run_game(player_id, client_socket):
         Floor(300, 380, 100, 20),  # middle floor
         Floor(400, 350, 500, 20),  # the floor above
     ]
-
-    # חוט לקבלת מיקומים משרת
-    threading.Thread(target=receive_positions, args=(client_socket, players)).start()
+    
+    # Store player names
+    player_names = []
+    threading.Thread(target=receive_data, args=(client_socket, players, player_names)).start()
 
     running = True
     while running:
@@ -81,16 +85,16 @@ def run_game(player_id, client_socket):
         keys = pygame.key.get_pressed()
 
         # Player physics
-        if player_id == 1:  # player 2 stuck to player 2.
+        if player_id == 1:  # player 1 stuck to player 2.
             rope_data = (players[1], 200)  # length 200px.
             local_player.update(keys, floors, players, rope_data)
         elif player_id == 2:  # player 2 stuck to player 1.
             rope_data = (players[0], 200)
             local_player.update(keys, floors, players, rope_data)
-        else:  # player 3 beeing player 3.
+        else:  # player 3 being player 3.
             local_player.update(keys, floors, players)
 
-        # sent position to the server.
+        # send position to the server.
         local_player.send_position(client_socket)
 
         # drawing the floors
@@ -99,23 +103,20 @@ def run_game(player_id, client_socket):
         for player in players:
             player.draw(screen)
 
-        for player in players:
+        for i, player in enumerate(players):
             player.draw(screen)
 
-            # Draw text above each player 
-            player_text = font.render(f"Player {player_id}", True, (255, 255, 255), (176, 176, 176))  # color white, background gray.
+            # Draw text above each player with their name if available
+            player_text = font.render(player_names[i] if i < len(player_names) else f"Player {i+1}", True, (255, 255, 255), (176, 176, 176))
 
             # position of the text above the player.
             text_x = player.rect.centerx - player_text.get_width() // 2.3
             text_y = player.rect.top - 40  # 40 pixels above the player.
-            
+
             # Draw the text on the screen at the calculated position
             screen.blit(player_text, (text_x, text_y))
 
-
-
-
-        # drawing the rope bet player 1 to player 2.
+        # drawing the rope between player 1 and player 2.
         if len(players) >= 2:
             pygame.draw.line(
                 screen,

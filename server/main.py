@@ -4,6 +4,7 @@ import struct
 
 # save the game state for all players. The keys are player_ids and the values are tuples of (x, y) coordinates. 1-indexed. 3 players maximum. 6 integers for each
 player_positions = {1: (0, 0), 2: (0, 0), 3: (0, 0)}
+player_names = ["P1", "P2", "P3"]
 
 def broadcast_positions(clients):
     """
@@ -21,30 +22,35 @@ def broadcast_positions(clients):
 
 def handle_client(client_socket, player_id, clients):
     """
-    handle the client and update the postions.
+    Handle the client and update the positions and name.
     """
     try:
+        # קבלת שם השחקן מהלקוח
+        name_data = client_socket.recv(20)  # 20 בתים בשביל שם
+        player_name = name_data.decode().strip()
+        player_names[player_id - 1] = player_name  # עדכון רשימת השמות
+
+        print(f"Player {player_id} connected as {player_name}")
+
         while True:
-            # Getting the postion from the client (sends 3 values: player_id, x, y)
             data = client_socket.recv(12)  # 12 bytes for 3 integers
             if not data:
                 break
             
-            # Data decomposition
             received_id, x, y = struct.unpack("3i", data)
-            
-            # check that the received id matches the current player_id
+
             if received_id == player_id:
                 player_positions[player_id] = (x, y)
-                print(f"Player {player_id} updated position to: {x}, {y}")
+                print(f"{player_names[player_id - 1]} (Player {player_id}) moved to: {x}, {y}")
                 
-                # sharing the new positions to all connected clients except the sender
                 broadcast_positions(clients)
+
     except Exception as e:
-        print(f"Error with player {player_id}: {e}")
+        print(f"Error with {player_names[player_id - 1]} (Player {player_id}): {e}")
     finally:
         client_socket.close()
         del clients[player_id]
+
 
 def main():
     """
