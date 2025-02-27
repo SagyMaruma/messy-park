@@ -10,19 +10,29 @@ def broadcast_positions(clients):
     """
     Sends all players' positions to all connected clients.
     """
-    for client_socket in clients.values():
-        if client_socket:
-            # Prepare the data to send: 3 players, each with x, y
-            positions_data = struct.pack(
-                "6i", 
-                *player_positions[1], 
-                *player_positions[2], 
-                *player_positions[3]
-            )
-            # Send the player names (each name is 20 bytes long)
-            names_data = "".join([name.ljust(20) for name in player_names]).encode()
-            # First send the names data, then send the positions data
-            client_socket.sendall(names_data + positions_data)
+    try:
+        # Prepare the data to send: 3 players, each with x, y
+        positions_data = struct.pack(
+            "6i", 
+            *player_positions[1], 
+            *player_positions[2], 
+            *player_positions[3]
+        )
+
+        # Send the player names (each name is 20 bytes long)
+        names_data = "".join([name.ljust(20) for name in player_names]).encode()
+
+        # Calculate total data size
+        total_data = names_data + positions_data
+        data_size = struct.pack("i", len(total_data))  # 4 bytes for size
+
+        # Send the size first, then the actual data
+        for client_socket in clients.values():
+            if client_socket:
+                client_socket.sendall(data_size + total_data)
+    except Exception as e:
+        print(f"Error broadcasting positions: {e}")
+
 
 def handle_client(client_socket, player_id, clients):
     """
