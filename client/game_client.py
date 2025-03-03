@@ -72,7 +72,7 @@ def run_game(player_id, client_socket):
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     clock = pygame.time.Clock()
 
-    # font for displaying text    
+    # font for displaying text
     font = pygame.font.SysFont('Arial', 15)
 
     # color, in case there are no assets/images.
@@ -95,7 +95,7 @@ def run_game(player_id, client_socket):
         Floor(300, 380, 100, 20),  # middle floor
         Floor(400, 350, 500, 20),  # the floor above
     ]
-    
+
     # Store player names
     player_names = []
     threading.Thread(target=receive_data, args=(client_socket, players, player_names)).start()
@@ -104,22 +104,26 @@ def run_game(player_id, client_socket):
     while running:
         screen.fill(WHITE)  # background fill(this case white)
 
+        # Event loop
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:  # Check if ESC key is pressed
+                    running = False  # Exit the game loop
 
         # check input.
         keys = pygame.key.get_pressed()
 
-        # Player physics
-        if player_id == 1:  # player 1 stuck to player 2.
-            rope_data = (players[1], 200)  # length 200px.
-            local_player.update(keys, floors, players, rope_data)
-        elif player_id == 2:  # player 2 stuck to player 1.
-            rope_data = (players[0], 200)
-            local_player.update(keys, floors, players, rope_data)
-        else:  # player 3 being player 3.
-            local_player.update(keys, floors, players)
+        # # Player physics
+        # if player_id == 1:  # player 1 stuck to player 2.
+        #     rope_data = (players[1], 200)  # length 200px.
+        #     local_player.update(keys, floors, players, rope_data)
+        # elif player_id == 2:  # player 2 stuck to player 1.
+        #     rope_data = (players[0], 200)
+        #     local_player.update(keys, floors, players, rope_data)
+        # else:  # player 3 being player 3.
+        #     local_player.update(keys, floors, players)
 
         # send position to the server.
         local_player.send_position(client_socket)

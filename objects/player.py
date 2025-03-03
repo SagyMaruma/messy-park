@@ -118,25 +118,25 @@ class Player:
                     self.rect.top = player.rect.bottom
                     self.velocity_y = 0
 
-    def apply_rope(self, other_player, rope_length):
-        """
-        checks and applies the rope force between the two players.
-        """
-        dx = other_player.rect.centerx - self.rect.centerx
-        dy = other_player.rect.centery - self.rect.centery
-        distance = math.sqrt(dx**2 + dy**2)
+    # def apply_rope(self, other_player, rope_length):
+    #     """
+    #     checks and applies the rope force between the two players.
+    #     """
+    #     dx = other_player.rect.centerx - self.rect.centerx
+    #     dy = other_player.rect.centery - self.rect.centery
+    #     distance = math.sqrt(dx**2 + dy**2)
 
-        if distance > rope_length:  # if the distance is more than the rope length
-            # calculate the pull factor and angle between the two players.
-            pull_factor = (distance - rope_length) * 0.1
-            angle = math.atan2(dy, dx)
+    #     if distance > rope_length:  # if the distance is more than the rope length
+    #         # calculate the pull factor and angle between the two players.
+    #         pull_factor = (distance - rope_length) * 0.1
+    #         angle = math.atan2(dy, dx)
 
-            self.rect.x += int(math.cos(angle) * pull_factor)
+    #         self.rect.x += int(math.cos(angle) * pull_factor)
 
-            if self.rect.centery < other_player.rect.centery:  # if the player above
-                other_player.rect.y -= int(math.sin(angle) * pull_factor)
-            elif self.rect.centery > other_player.rect.centery:  # if the player below
-                self.rect.y += int(math.sin(angle) * pull_factor)
+    #         if self.rect.centery < other_player.rect.centery:  # if the player above
+    #             other_player.rect.y -= int(math.sin(angle) * pull_factor)
+    #         elif self.rect.centery > other_player.rect.centery:  # if the player below
+    #             self.rect.y += int(math.sin(angle) * pull_factor)
 
     def update(self, keys, floors, players, rope_data=None):
         """updates the player's position and checks for collisions."""
