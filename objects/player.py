@@ -147,9 +147,9 @@ class Player:
         self.rect.y += self.velocity_y
         self.check_vertical_collision(floors, players)  # check vertical collision
 
-        # start the rope.
-        if rope_data:
-            self.apply_rope(*rope_data)
+        # # start the rope.
+        # if rope_data:
+        #     self.apply_rope(*rope_data)
 
         # update the animation of the player.
         if self.velocity_x != 0:  

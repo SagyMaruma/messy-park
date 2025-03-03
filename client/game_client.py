@@ -17,6 +17,7 @@ FPS = 60
 WHITE = (255, 255, 255)
 pygame.display.set_caption("Game")
 
+
 def receive_full_data(sock, expected_size):
     """Helper function to receive a fixed amount of data."""
     data = b""
@@ -26,6 +27,7 @@ def receive_full_data(sock, expected_size):
             return None  # Connection lost
         data += packet
     return data
+
 
 def receive_data(client_socket, players, player_names):
     """Receives positions and player names from the server."""
@@ -49,7 +51,7 @@ def receive_data(client_socket, players, player_names):
             positions_data = full_data[60:]  # The rest is positions
 
             # Decode names
-            names = [name_data[i:i+20].decode().strip() for i in range(0, 60, 20)]
+            names = [name_data[i : i + 20].decode().strip() for i in range(0, 60, 20)]
             player_names.clear()
             player_names.extend(names)
 
@@ -73,7 +75,7 @@ def run_game(player_id, client_socket):
     clock = pygame.time.Clock()
 
     # font for displaying text
-    font = pygame.font.SysFont('Arial', 15)
+    font = pygame.font.SysFont("Arial", 15)
 
     # color, in case there are no assets/images.
     colors = [
@@ -98,7 +100,9 @@ def run_game(player_id, client_socket):
 
     # Store player names
     player_names = []
-    threading.Thread(target=receive_data, args=(client_socket, players, player_names)).start()
+    threading.Thread(
+        target=receive_data, args=(client_socket, players, player_names)
+    ).start()
 
     running = True
     while running:
@@ -122,8 +126,9 @@ def run_game(player_id, client_socket):
         # elif player_id == 2:  # player 2 stuck to player 1.
         #     rope_data = (players[0], 200)
         #     local_player.update(keys, floors, players, rope_data)
-        # else:  # player 3 being player 3.
-        #     local_player.update(keys, floors, players)
+        # player 3 being player 3.
+
+        local_player.update(keys, floors, players)
 
         # send position to the server.
         local_player.send_position(client_socket)
@@ -139,11 +144,21 @@ def run_game(player_id, client_socket):
 
             # Only try to draw name if player_names has enough elements
             if i < len(player_names):
-                player_text = font.render(player_names[i] if i < len(player_names) else f"Player {i+1}", True, (255, 255, 255), (176, 176, 176))  # white text color.
+                player_text = font.render(
+                    player_names[i] if i < len(player_names) else f"Player {i+1}",
+                    True,
+                    (255, 255, 255),
+                    (176, 176, 176),
+                )  # white text color.
 
                 # Check if the name is too long. If so, truncate it.
                 if len(player_names[i]) > 10:
-                    player_text = font.render(player_names[i][:10] + "...", True, (255, 255, 255), (176, 176, 176))  # white text color.
+                    player_text = font.render(
+                        player_names[i][:10] + "...",
+                        True,
+                        (255, 255, 255),
+                        (176, 176, 176),
+                    )  # white text color.
 
                 # position of the text above the player.
                 text_x = player.rect.centerx - player_text.get_width() // 2.1
@@ -153,20 +168,22 @@ def run_game(player_id, client_socket):
                 screen.blit(player_text, (text_x, text_y))
             else:
                 # Placeholder text for player name if not yet received
-                placeholder_text = font.render(f"Player {i+1}", True, (255, 255, 255), (176, 176, 176))
+                placeholder_text = font.render(
+                    f"Player {i+1}", True, (255, 255, 255), (176, 176, 176)
+                )
                 text_x = player.rect.centerx - placeholder_text.get_width() // 2.3
                 text_y = player.rect.top - 40
                 screen.blit(placeholder_text, (text_x, text_y))
 
-        # drawing the rope between player 1 and player 2.
-        if len(players) >= 2:
-            pygame.draw.line(
-                screen,
-                (0, 0, 0),  # rope color(black).
-                players[0].rect.center,
-                players[1].rect.center,
-                2,  # thickness of the rope.
-            )
+        # # drawing the rope between player 1 and player 2.
+        # if len(players) >= 2:
+        #     pygame.draw.line(
+        #         screen,
+        #         (0, 0, 0),  # rope color(black).
+        #         players[0].rect.center,
+        #         players[1].rect.center,
+        #         2,  # thickness of the rope.
+        #     )
 
         pygame.display.flip()
         clock.tick(FPS)
