@@ -1,22 +1,12 @@
 import sys
 import socket
 import struct
-from PyQt5.QtWidgets import (
-    QApplication,
-    QWidget,
-    QVBoxLayout,
-    QLineEdit,
-    QPushButton,
-    QLabel,
-    QDesktopWidget,
-)
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLineEdit, QPushButton, QLabel, QDesktopWidget
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 import os
 
-# Open path for every file, in this case I need the client
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
-
 from client.game_client import run_game
 
 class ServerConnectionWindow(QWidget):

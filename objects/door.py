@@ -1,3 +1,4 @@
+# objects/door.py
 import pygame
 
 class Door:
@@ -9,5 +10,4 @@ class Door:
         pygame.draw.rect(screen, self.color, self.rect)
 
     def check_win(self, players):
-        """Checks if both players are inside the door."""
         return all(player.is_inside_door for player in players)

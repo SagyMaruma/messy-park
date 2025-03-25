@@ -8,7 +8,3 @@ class Floor:
 
     def draw(self, screen):
         pygame.draw.rect(screen, self.color, self.rect)
-
-    def check_collision(self, player):
-        """No longer needed here, handled in Player.check_vertical_collision."""
-        pass
