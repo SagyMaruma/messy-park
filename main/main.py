@@ -1,13 +1,22 @@
 import sys
 import socket
 import struct
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLineEdit, QPushButton, QLabel, QDesktopWidget
+from PyQt5.QtWidgets import (
+    QApplication,
+    QWidget,
+    QVBoxLayout,
+    QLineEdit,
+    QPushButton,
+    QLabel,
+    QDesktopWidget,
+)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
 from client.game_client import run_game
+
 
 class ServerConnectionWindow(QWidget):
     def __init__(self):
@@ -34,8 +43,11 @@ class ServerConnectionWindow(QWidget):
         layout.addWidget(self.label)
 
         self.ip_input = QLineEdit(self)
-        self.ip_input.setPlaceholderText("E.g., 127.0.0.1")
-        self.ip_input.setStyleSheet("font-size: 16px; padding: 10px; border-radius: 10px; background-color: #fff; border: 2px solid #FF7F32;")
+        self.ip_input.setText("127.0.0.1")
+        self.ip_input.setPlaceholderText("E.g., 192.168.1.1")
+        self.ip_input.setStyleSheet(
+            "font-size: 16px; padding: 10px; border-radius: 10px; background-color: #fff; border: 2px solid #FF7F32;"
+        )
         layout.addWidget(self.ip_input)
 
         self.name_label = QLabel("Name:", self)
@@ -45,12 +57,17 @@ class ServerConnectionWindow(QWidget):
         layout.addWidget(self.name_label)
 
         self.name_input = QLineEdit(self)
+        self.name_input.setText("sagy1")
         self.name_input.setPlaceholderText("Your Name")
-        self.name_input.setStyleSheet("font-size: 16px; padding: 10px; border-radius: 10px; background-color: #fff; border: 2px solid #FF7F32;")
+        self.name_input.setStyleSheet(
+            "font-size: 16px; padding: 10px; border-radius: 10px; background-color: #fff; border: 2px solid #FF7F32;"
+        )
         layout.addWidget(self.name_input)
 
         self.connect_button = QPushButton(" Connect", self)
-        self.connect_button.setStyleSheet("font-size: 16px; background-color: #FF7F32; color: white; padding: 12px; border-radius: 10px; font-weight: bold;")
+        self.connect_button.setStyleSheet(
+            "font-size: 16px; background-color: #FF7F32; color: white; padding: 12px; border-radius: 10px; font-weight: bold;"
+        )
         self.connect_button.clicked.connect(self.connect_to_server)
         layout.addWidget(self.connect_button)
 
@@ -72,6 +89,7 @@ class ServerConnectionWindow(QWidget):
         self.client_window = ClientWindow(ip_address, player_name)
         self.client_window.show()
         self.close()
+
 
 class ClientWindow(QWidget):
     def __init__(self, ip_address, player_name):
@@ -114,6 +132,7 @@ class ClientWindow(QWidget):
     def start_game(self, player_id):
         run_game(player_id, self.client_socket)
         self.close()
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

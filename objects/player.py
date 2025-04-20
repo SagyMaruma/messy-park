@@ -136,7 +136,7 @@ class Player:
         self.check_vertical_collision(floors, players, elevators)
         for gun in guns:
             if gun.shoot(self):
-                self.health -= 10
+                self.health -= 100
                 if self.health <= 0:
                     self.reset_position()
         if self.velocity_x != 0:
@@ -152,8 +152,7 @@ class Player:
     def draw(self, screen):
         if not self.is_inside_door:
             pygame.draw.rect(screen, self.color, self.rect)
-            health_text = pygame.font.SysFont("Arial", 15).render(f"HP: {self.health}", True, (0, 0, 0))
-            screen.blit(health_text, (self.rect.x, self.rect.y - 20))
+            
 
     def send_position(self, client_socket):
         data = struct.pack("3i?1i", self.player_id, self.rect.x, self.rect.y, self.facing_right, self.walk_frame)
