@@ -7,6 +7,7 @@ import sys
 from pymongo import MongoClient
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
+
 from objects.player import Player
 from objects.map import Map
 
@@ -50,7 +51,7 @@ def receive_data(client_socket, players, player_names, game_map):
     finally:
         client_socket.close()
 
-def run_game(player_id, client_socket):
+def run_game(player_id, client_socket,udp_socket):
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     clock = pygame.time.Clock()

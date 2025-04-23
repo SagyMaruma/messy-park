@@ -1,6 +1,8 @@
+import json
 import socket
 import struct
 import threading
+import time
 from pymongo import MongoClient
 
 # MongoDB setup
@@ -14,70 +16,70 @@ player_roles = {1: "Fire", 2: "Water"}
 player_animations = {1: {"facing_right": True, "walk_frame": 0}, 2: {"facing_right": True, "walk_frame": 0}}
 player_approvals = {1: False, 2: False}  # Approval for next level
 current_level = 1
+clients = {}
 
-def broadcast_positions(clients):
-    """Sends all players' positions and animations to all connected clients."""
-    try:
-        positions_data = struct.pack("4i", *player_positions[1], *player_positions[2])
-        names_data = "".join([name.ljust(20) for name in player_names]).encode()
-        anim_data = struct.pack("2?2i", player_animations[1]["facing_right"], player_animations[2]["facing_right"],
-                                player_animations[1]["walk_frame"], player_animations[2]["walk_frame"])
-        total_data = names_data + positions_data + anim_data
-        data_size = struct.pack("i", len(total_data))
-        for client_socket in clients.values():
-            if client_socket:
-                client_socket.sendall(data_size + total_data)
-    except Exception as e:
-        print(f"Error broadcasting positions: {e}")
+def start_server():
+    """start the game server"""
 
-def handle_client(client_socket, player_id, clients):
-    """Handle client connection, update positions, names, animations, and approvals."""
-    global current_level
-    try:
-        name_data = client_socket.recv(20)
-        player_name = name_data.decode().strip()
-        player_names[player_id - 1] = player_name
-        print(f"Player {player_id} ({player_roles[player_id]}) connected as {player_name}")
+    # create tcp socket
+    tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    tcp_socket.bind(("0.0.0.0", 5555))
+    tcp_socket.listen(2)
+    print("tcp socket listening on port 5555...")
 
-        while True:
-            data = client_socket.recv(20)  # Original size: id, x, y, facing_right, walk_frame
-            if not data:
-                break
-            received_id, x, y, facing_right, walk_frame = struct.unpack("3i?1i", data)
-            if received_id == player_id:
-                player_positions[player_id] = (x, y)
-                player_animations[player_id] = {"facing_right": facing_right, "walk_frame": walk_frame}
-                if x == -100 and y == -100:
-                    player_approvals[player_id] = True
-                else:
-                    player_approvals[player_id] = False
-                
-                if all(player_approvals.values()):
-                    current_level += 1
-                    player_approvals[1] = player_approvals[2] = False
-                    print(f"Both players approved, moving to level {current_level}")
-                
-                broadcast_positions(clients)
-    except Exception as e:
-        print(f"Error with {player_names[player_id - 1]} (Player {player_id}): {e}")
-    finally:
-        client_socket.close()
-        del clients[player_id]
+    # create udp socket
+    udp_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+    udp_socket.bind(("0.0.0.0",5556))
+    print("udp socket listening on port 5556...")
 
-def main():
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind(("0.0.0.0", 5555))
-    server.listen(2)
-    print("Server listening on port 5555...")
-    clients = {}
     player_id = 1
     while player_id <= 2:
-        client_socket, client_address = server.accept()
+        client_socket, client_address = tcp_socket.accept()
         print(f"Player {player_id} ({player_roles[player_id]}) connected from {client_address}")
-        client_socket.sendall(struct.pack("i", player_id))
         clients[player_id] = client_socket
-        threading.Thread(target=handle_client, args=(client_socket, player_id, clients)).start()
+        client_socket.send(player_id)
+        threading.Thread(target=handle_secondary, args=(client_socket,player_id)).start()
         player_id += 1
 
+    # create a udp thread
+    threading.Thread(target=handle_player_data, daemon=True, args=(udp_socket,clients[1].gethostname(),clients[2].gethostname()))
+
+
+def handle_player_data(udp_socket:socket.socket,addr1,addr2):
+    while True:
+        data,addr = udp_socket.recvfrom()
+        if addr == addr1:
+            udp_socket.sendto(data,addr2)
+        else:
+            udp_socket.sendto(data,addr1)
+
+
+def handle_secondary(client_socket: socket.socket,player_id):
+    while True:
+        raw_data = client_socket.recv(1024)
+        try:
+            data = json.loads(raw_data.decode())
+
+            match data.get("action", ""):
+                case "new player":
+                    new_player_connect(client_socket, data.get("data", ""))
+                case "approval":
+                    player_approvals.update({player_id:True})
+                    if all(approval for _,approval in player_approvals):
+                        current_level+=1
+                        player_approvals.update({1:False,2:False})
+                case _:
+                    print("client sent an invalid action")
+
+        except Exception as e:
+            print(
+                f"error occured while handling a tcp request from ({client_socket.getpeername}):{e})"
+            )
+
+def new_player_connect(socket,player_data):
+    return
+
+
+
 if __name__ == "__main__":
-    main()
+    start_server()

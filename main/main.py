@@ -121,16 +121,18 @@ class ClientWindow(QWidget):
         try:
             self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.client_socket.connect((self.ip_address, 5555))
-            player_id = struct.unpack("i", self.client_socket.recv(4))[0]
+
+            self.udp_socket = socket.socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.udp_socket.bind((self.ip_address, 5556))
+
+            player_id = self.client_socket.recv(1024)
             self.role = "Fire" if player_id == 1 else "Water"
-            name_data = self.player_name.encode().ljust(20)
-            self.client_socket.sendall(name_data)
             self.start_game(player_id)
         except Exception as e:
             self.label.setText(f"Not connected: {str(e)}")
 
     def start_game(self, player_id):
-        run_game(player_id, self.client_socket)
+        run_game(player_id, self.client_socket, self.udp_socket)
         self.close()
 
 
