@@ -2,3 +2,10 @@ pygame
 keyboard
 PyQt5
 math
+mongoDb
+socket
+threading
+struct
+time
+sys
+os
