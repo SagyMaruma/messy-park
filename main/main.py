@@ -15,7 +15,7 @@ from PyQt5.QtGui import QFont
 import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
-from client.game_client import run_game
+from client.client import run_game
 
 
 class ServerConnectionWindow(QWidget):
