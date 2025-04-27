@@ -1,37 +1,41 @@
-# server.py
 import socket
 import threading
 import struct
 import time
 from pymongo import MongoClient
 
+# Server configuration
 IP = "0.0.0.0"
 PORT = 5555
 BUFFER_SIZE = 4096
 
+# Create and bind the UDP socket
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 server_socket.bind((IP, PORT))
 print(f"Server started on {IP}:{PORT}")
 
-players = {}
-roles = ["Fire", "Water"]
-standing_on_doors = {}
+# Data structures to store player info and game state
+players = {}  # key: address, value: player data
+roles = ["Fire", "Water"]  # predefined roles
+standing_on_doors = {}  # key: address, value: bool
 current_level = 0
 max_levels = 3
 start_time = None
 game_over = False
 
-# MongoDB setup
+# MongoDB connection to store game results
 client = MongoClient("mongodb://localhost:27017/")
 db = client["fire_and_water_game"]
 results_collection = db["game_results"]
 
+# Function to handle incoming messages from clients
 def handle_clients():
     global start_time
     while True:
         try:
             data, addr = server_socket.recvfrom(BUFFER_SIZE)
 
+            # Player position and status update
             if len(data) == struct.calcsize("2i?b"):
                 x, y, facing_right, on_door = struct.unpack("2i?b", data)
                 if addr in players:
@@ -40,6 +44,7 @@ def handle_clients():
                     players[addr]["facing_right"] = facing_right
                     standing_on_doors[addr] = bool(on_door)
             else:
+                # Initial player connection
                 message = data.decode()
                 if addr not in players and len(players) < 2:
                     player_id = len(players) + 1
@@ -56,29 +61,36 @@ def handle_clients():
                     }
                     standing_on_doors[addr] = False
                     print(f"{message} joined as {role}")
+                    # Send assigned role and ID to the player
                     server_socket.sendto(f"{player_id},{role}".encode(), addr)
 
+                    # If both players are connected, start the game timer
                     if len(players) == 2:
                         start_time = time.time()
                         print("Both players connected. Starting timer!")
         except Exception as e:
             print(f"Error: {e}")
 
+# Function to continuously broadcast player positions and handle level progression
 def send_positions():
     global current_level, game_over
     while True:
         if len(players) == 2:
             all_data = []
             for p in players.values():
+                # Serialize player data for broadcast
                 player_info = f"{p['id']}|{p['name']}|{p['role']}|{p['x']}|{p['y']}|{int(p['facing_right'])}"
                 all_data.append(player_info)
             message = ";".join(all_data)
 
+            # Send to all clients
             for addr in players:
                 server_socket.sendto(message.encode(), addr)
 
+            # Check if both players are standing on their doors
             if all(standing_on_doors.values()) and len(standing_on_doors) == 2:
                 if current_level < max_levels - 1:
+                    # Move to next level
                     current_level += 1
                     print(f"Loading Level {current_level}")
                     time.sleep(1)
@@ -87,6 +99,7 @@ def send_positions():
                     for addr in standing_on_doors:
                         standing_on_doors[addr] = False
                 else:
+                    # Game finished, record results
                     if not game_over:
                         end_time = time.time()
                         total_time = round(end_time - start_time, 2)
@@ -103,10 +116,12 @@ def send_positions():
                         results_collection.insert_one(result)
                         print("Saved game result to MongoDB.")
                         game_over = True
-        time.sleep(0.033)
+        time.sleep(0.033)  # approx 30 FPS update rate
 
+# Start server threads
 threading.Thread(target=handle_clients, daemon=True).start()
 threading.Thread(target=send_positions, daemon=True).start()
 
+# Keep the server running
 while True:
     time.sleep(1)
