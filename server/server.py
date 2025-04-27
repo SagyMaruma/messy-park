@@ -1,7 +1,9 @@
+# server.py
 import socket
 import threading
 import struct
 import time
+from pymongo import MongoClient
 
 IP = "0.0.0.0"
 PORT = 5555
@@ -16,8 +18,16 @@ roles = ["Fire", "Water"]
 standing_on_doors = {}
 current_level = 0
 max_levels = 3
+start_time = None
+game_over = False
+
+# MongoDB setup
+client = MongoClient("mongodb://localhost:27017/")
+db = client["fire_and_water_game"]
+results_collection = db["game_results"]
 
 def handle_clients():
+    global start_time
     while True:
         try:
             data, addr = server_socket.recvfrom(BUFFER_SIZE)
@@ -47,11 +57,15 @@ def handle_clients():
                     standing_on_doors[addr] = False
                     print(f"{message} joined as {role}")
                     server_socket.sendto(f"{player_id},{role}".encode(), addr)
+
+                    if len(players) == 2:
+                        start_time = time.time()
+                        print("Both players connected. Starting timer!")
         except Exception as e:
             print(f"Error: {e}")
 
 def send_positions():
-    global current_level
+    global current_level, game_over
     while True:
         if len(players) == 2:
             all_data = []
@@ -64,14 +78,31 @@ def send_positions():
                 server_socket.sendto(message.encode(), addr)
 
             if all(standing_on_doors.values()) and len(standing_on_doors) == 2:
-                current_level += 1
-                if current_level >= max_levels:
-                    current_level = max_levels - 1  # Stay at last level
-                print(f"Loading Level {current_level}")
-                time.sleep(1)
-                for addr in players:
-                    server_socket.sendto(f"LEVEL:{current_level}".encode(), addr)
+                if current_level < max_levels - 1:
+                    current_level += 1
+                    print(f"Loading Level {current_level}")
+                    time.sleep(1)
+                    for addr in players:
+                        server_socket.sendto(f"LEVEL:{current_level}".encode(), addr)
+                    for addr in standing_on_doors:
+                        standing_on_doors[addr] = False
+                else:
+                    if not game_over:
+                        end_time = time.time()
+                        total_time = round(end_time - start_time, 2)
+                        print(f"Game finished! Total time: {total_time} seconds.")
+                        for addr in players:
+                            server_socket.sendto(f"GAME_OVER:{total_time}".encode(), addr)
 
+                        result = {
+                            "player1": list(players.values())[0]["name"],
+                            "player2": list(players.values())[1]["name"],
+                            "total_time_seconds": total_time,
+                            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+                        }
+                        results_collection.insert_one(result)
+                        print("Saved game result to MongoDB.")
+                        game_over = True
         time.sleep(0.033)
 
 threading.Thread(target=handle_clients, daemon=True).start()

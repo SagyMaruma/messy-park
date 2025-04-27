@@ -1,14 +1,18 @@
+# client.py
 import sys
 import os
-# Add the path to the objects folder
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'objects'))
 import socket
 import pygame
 import struct
 import threading
+import time
+# Add the path to the objects folder
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'objects'))
 from player import Player
 from floor import Floor
 from door import Door
+
+
 
 SERVER_IP = "127.0.0.1"
 SERVER_PORT = 5555
@@ -24,14 +28,18 @@ player_id, role = None, None
 players = {}
 my_player = None
 current_level = 0
-doors = []
+start_time = None
+running_game = False
+waiting_for_players = True
+game_over = False
 
 pygame.init()
 screen = pygame.display.set_mode((1000, 800))
 pygame.display.set_caption("Fire and Water Game")
 clock = pygame.time.Clock()
 
-# Define levels
+font = pygame.font.Font(None, 36)
+
 levels = [
     {
         "floors": [Floor(0, 600, 1000, 1000), Floor(400, 500, 200, 20)],
@@ -49,15 +57,27 @@ levels = [
 
 colors = {"Fire": (255, 0, 0), "Water": (0, 0, 255)}
 
+standing_status = {}
+
 def receive_data():
-    global player_id, role, players, my_player, current_level
+    global player_id, role, players, my_player, waiting_for_players, running_game, current_level, start_time, game_over
     while True:
         try:
             data, _ = client_socket.recvfrom(BUFFER_SIZE)
-            if data.startswith(b"LEVEL"):
-                current_level = int(data.decode().split(":")[1])
-                continue
             message = data.decode()
+
+            if message.startswith("LEVEL:"):
+                current_level = int(message.split(":")[1])
+                print(f"Level changed to {current_level}")
+                continue
+
+            if message.startswith("GAME_OVER:"):
+                total_time = float(message.split(":")[1])
+                game_over = True
+                start_time = time.time() - total_time
+                print("Game Over received from server.")
+                continue
+
             if "," in message:
                 player_id, role = message.split(",")
                 player_id = int(player_id)
@@ -77,15 +97,17 @@ def receive_data():
                     }
                     existing_ids.add(pid)
 
-                for pid in list(players.keys()):
-                    if pid not in existing_ids:
-                        del players[pid]
-
+                if len(players) >= 2:
+                    waiting_for_players = False
+                    if start_time is None:
+                        start_time = time.time()
+                        running_game = True
         except:
             continue
 
 threading.Thread(target=receive_data, daemon=True).start()
 
+# Main loop
 running = True
 while running:
     clock.tick(60)
@@ -95,20 +117,45 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
+    screen.fill((30, 30, 30))
+
+    if waiting_for_players:
+        waiting_text = font.render("Waiting for players...", True, (255, 255, 255))
+        screen.blit(waiting_text, (350, 300))
+        pygame.display.flip()
+        continue
+
+    if game_over:
+        screen.fill((0, 0, 0))
+        total_time = time.time() - start_time
+        minutes = int(total_time // 60)
+        seconds = int(total_time % 60)
+        end_text = font.render("Game Finished!", True, (0, 255, 0))
+        time_text = font.render(f"Total Time: {minutes:02}:{seconds:02}", True, (0, 255, 0))
+        screen.blit(end_text, (400, 300))
+        screen.blit(time_text, (400, 350))
+        pygame.display.flip()
+        continue
+
     if my_player:
         my_player.handle_input(keys)
         my_player.apply_gravity()
         my_player.check_floor_collision(levels[current_level]["floors"])
 
-        # Check if player is on their door
+        standing_status = {}
+        for pid, pdata in players.items():
+            door = levels[current_level]["doors"][pid - 1]
+            rect = pygame.Rect(pdata["x"], pdata["y"], 25, 25)
+            if rect.colliderect(door.rect):
+                standing_status[pid] = pdata["role"]
+
         door = levels[current_level]["doors"][my_player.player_id - 1]
-        standing_on_door = my_player.rect.colliderect(door.rect)
+        if my_player.rect.colliderect(door.rect):
+            standing_status[my_player.player_id] = my_player.role
 
-        # Send position + standing on door info
-        data = struct.pack("2i?b", my_player.rect.x, my_player.rect.y, my_player.facing_right, standing_on_door)
+        i_am_standing = my_player.rect.colliderect(door)
+        data = struct.pack("2i?b", my_player.rect.x, my_player.rect.y, my_player.facing_right, i_am_standing)
         client_socket.sendto(data, (SERVER_IP, SERVER_PORT))
-
-    screen.fill((30, 30, 30))
 
     for floor in levels[current_level]["floors"]:
         floor.draw(screen)
@@ -124,9 +171,24 @@ while running:
             color = colors[pdata["role"]]
             rect = pygame.Rect(pdata["x"], pdata["y"], 25, 25)
             pygame.draw.rect(screen, color, rect)
-            font = pygame.font.Font(None, 24)
-            text = font.render(pdata["name"], True, (255, 255, 255))
+            font_small = pygame.font.Font(None, 24)
+            text = font_small.render(pdata["name"], True, (255, 255, 255))
             screen.blit(text, (pdata["x"], pdata["y"] - 20))
+
+    y_offset = 20
+    for pid, role in standing_status.items():
+        standing_text = f"{role} is standing on their door!"
+        text_surface = font.render(standing_text, True, (255, 255, 0))
+        screen.blit(text_surface, (20, y_offset))
+        y_offset += 40
+
+    if start_time:
+        elapsed_time = time.time() - start_time
+        minutes = int(elapsed_time // 60)
+        seconds = int(elapsed_time % 60)
+        timer_text = font.render(f"Time: {minutes:02}:{seconds:02}", True, (255, 255, 255))
+        timer_rect = timer_text.get_rect(center=(500, 30))
+        screen.blit(timer_text, timer_rect)
 
     pygame.display.flip()
 
