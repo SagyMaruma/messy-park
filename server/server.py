@@ -5,7 +5,7 @@ import time
 from pymongo import MongoClient
 
 # Server configuration
-IP = "127.0.0.1"
+IP = "192.168.25.173"
 PORT = 5555
 BUFFER_SIZE = 4096
 
