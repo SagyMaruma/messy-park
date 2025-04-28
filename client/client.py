@@ -6,26 +6,82 @@ import struct
 import threading
 import time
 
-# Add the path to the objects directory to import custom classes
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'objects'))
+# --- Import custom classes ---
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "objects"))
 from player import Player
 from floor import Floor
 from door import Door
 
-# Network configuration
-SERVER_IP = "127.0.0.1"
+# --- PyQt5 Login Window ---
+from PyQt5.QtWidgets import (
+    QApplication,
+    QWidget,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QVBoxLayout,
+)
+
+
+class LoginWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Login to Fire and Water Game")
+        self.setGeometry(500, 300, 300, 200)
+
+        self.ip_input = QLineEdit(self)
+        self.ip_input.setPlaceholderText("Server IP")
+
+        self.name_input = QLineEdit(self)
+        self.name_input.setPlaceholderText("Player Name")
+
+        self.submit_button = QPushButton("Connect", self)
+        self.submit_button.clicked.connect(self.submit)
+
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel("Enter Server IP:"))
+        layout.addWidget(self.ip_input)
+        layout.addWidget(QLabel("Enter Player Name:"))
+        layout.addWidget(self.name_input)
+        layout.addWidget(self.submit_button)
+
+        self.setLayout(layout)
+
+        self.result = None
+
+    def submit(self):
+        ip = self.ip_input.text()
+        name = self.name_input.text()
+        if ip and name:
+            self.result = (ip, name)
+            self.close()
+
+
+def show_login():
+    app = QApplication(sys.argv)
+    login = LoginWindow()
+    login.show()
+    app.exec_()
+    return login.result
+
+
+# --- Show login window ---
+result = show_login()
+if result is None:
+    sys.exit()
+
+SERVER_IP, name = result
 SERVER_PORT = 5555
 BUFFER_SIZE = 4096
 
-# Setup non-blocking UDP socket
+# --- Setup socket ---
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 client_socket.setblocking(False)
 
-# Get player name and send to server
-name = input("Enter your player name: ")
+# Send player name
 client_socket.sendto(name.encode(), (SERVER_IP, SERVER_PORT))
 
-# Game state variables
+# --- Game state variables ---
 player_id, role = None, None
 players = {}
 my_player = None
@@ -35,54 +91,45 @@ running_game = False
 waiting_for_players = True
 game_over = False
 
-# Pygame setup
+# --- Pygame setup ---
 pygame.init()
 screen = pygame.display.set_mode((1000, 800))
 pygame.display.set_caption("Fire and Water Game")
 clock = pygame.time.Clock()
 font = pygame.font.Font(None, 36)
 
+# --- Level definitions ---
 levels = [
     {
         "floors": [
-            Floor(0, 600, 1000, 1000, "normal"), 
-            Floor(400, 500, 200, 20, "fire")
+            Floor(0, 600, 1000, 1000, "normal"),
+            Floor(400, 500, 200, 20, "fire"),
         ],
-        "doors": [
-            Door(100, 570, (255, 0, 0)), 
-            Door(800, 570, (0, 0, 255))
-        ]
+        "doors": [Door(100, 570, (255, 0, 0)), Door(800, 570, (0, 0, 255))],
     },
     {
         "floors": [
-            Floor(0, 600, 1000, 1000, "normal"), 
-            Floor(300, 450, 400, 20, 'water')
+            Floor(0, 600, 1000, 1000, "normal"),
+            Floor(300, 450, 400, 20, "water"),
         ],
-        "doors": [
-            Door(120, 570, (255, 0, 0)), 
-            Door(850, 570, (0, 0, 255))
-        ]
+        "doors": [Door(120, 570, (255, 0, 0)), Door(850, 570, (0, 0, 255))],
     },
     {
         "floors": [
-            Floor(0, 600, 1000, 1000, "normal"), 
-            Floor(200, 400, 600, 20, "normal")
+            Floor(0, 600, 1000, 1000, "normal"),
+            Floor(200, 400, 600, 20, "normal"),
         ],
-        "doors": [
-            Door(150, 570, (255, 0, 0)), 
-            Door(780, 570, (0, 0, 255))
-        ]
+        "doors": [Door(150, 570, (255, 0, 0)), Door(780, 570, (0, 0, 255))],
     },
 ]
 
-
-# Role colors
 colors = {"Fire": (255, 0, 0), "Water": (0, 0, 255)}
 
-# Tracks which players are standing on their respective doors
+# --- Standing status tracking ---
 standing_status = {}
 
-# Background thread to listen for messages from the server
+
+# --- Receive data thread ---
 def receive_data():
     global player_id, role, players, my_player, waiting_for_players, running_game, current_level, start_time, game_over
     while True:
@@ -90,13 +137,11 @@ def receive_data():
             data, _ = client_socket.recvfrom(BUFFER_SIZE)
             message = data.decode()
 
-            # Handle level change message
             if message.startswith("LEVEL:"):
                 current_level = int(message.split(":")[1])
                 print(f"Level changed to {current_level}")
                 continue
 
-            # Handle game over message
             if message.startswith("GAME_OVER:"):
                 total_time = float(message.split(":")[1])
                 game_over = True
@@ -104,14 +149,19 @@ def receive_data():
                 print("Game Over received from server.")
                 continue
 
-            # Handle player assignment message
             if "," in message:
                 player_id, role = message.split(",")
                 player_id = int(player_id)
                 print(f"Assigned ID: {player_id}, Role: {role}")
-                my_player = Player(player_id, name, role, colors[role], 100 if player_id == 1 else 600, 300)
+                my_player = Player(
+                    player_id,
+                    name,
+                    role,
+                    colors[role],
+                    100 if player_id == 1 else 600,
+                    300,
+                )
             else:
-                # Receive player positions and update local state
                 existing_ids = set()
                 for p_data in message.split(";"):
                     pid, pname, prole, x, y, facing_right = p_data.split("|")
@@ -121,7 +171,7 @@ def receive_data():
                         "role": prole,
                         "x": int(x),
                         "y": int(y),
-                        "facing_right": bool(int(facing_right))
+                        "facing_right": bool(int(facing_right)),
                     }
                     existing_ids.add(pid)
 
@@ -133,10 +183,11 @@ def receive_data():
         except:
             continue
 
-# Start listening thread
+
+# --- Start thread to receive data ---
 threading.Thread(target=receive_data, daemon=True).start()
 
-# Main game loop
+# --- Main game loop ---
 running = True
 while running:
     clock.tick(60)
@@ -148,27 +199,26 @@ while running:
 
     screen.fill((30, 30, 30))
 
-    # Show waiting screen until 2 players join
     if waiting_for_players:
         waiting_text = font.render("Waiting for players...", True, (255, 255, 255))
         screen.blit(waiting_text, (350, 300))
         pygame.display.flip()
         continue
 
-    # Show game over screen
     if game_over:
         screen.fill((0, 0, 0))
         total_time = time.time() - start_time
         minutes = int(total_time // 60)
         seconds = int(total_time % 60)
         end_text = font.render("Game Finished!", True, (0, 255, 0))
-        time_text = font.render(f"Total Time: {minutes:02}:{seconds:02}", True, (0, 255, 0))
+        time_text = font.render(
+            f"Total Time: {minutes:02}:{seconds:02}", True, (0, 255, 0)
+        )
         screen.blit(end_text, (400, 300))
         screen.blit(time_text, (400, 350))
         pygame.display.flip()
         continue
 
-    # Player movement and logic
     if my_player:
         my_player.handle_input(keys)
         my_player.apply_gravity()
@@ -181,28 +231,29 @@ while running:
             if rect.colliderect(door.rect):
                 standing_status[pid] = pdata["role"]
 
-        # Check if local player is on their door
         door = levels[current_level]["doors"][my_player.player_id - 1]
         if my_player.rect.colliderect(door.rect):
             standing_status[my_player.player_id] = my_player.role
 
         i_am_standing = my_player.rect.colliderect(door)
-        # Send player position and standing status to server
-        data = struct.pack("2i?b", my_player.rect.x, my_player.rect.y, my_player.facing_right, i_am_standing)
+        data = struct.pack(
+            "2i?b",
+            my_player.rect.x,
+            my_player.rect.y,
+            my_player.facing_right,
+            i_am_standing,
+        )
         client_socket.sendto(data, (SERVER_IP, SERVER_PORT))
 
-    # Draw floors and doors
     for floor in levels[current_level]["floors"]:
         floor.draw(screen)
 
     for door in levels[current_level]["doors"]:
         door.draw(screen)
 
-    # Draw the local player
     if my_player:
         my_player.draw(screen)
 
-    # Draw other players
     for pid, pdata in players.items():
         if pid != my_player.player_id:
             color = colors[pdata["role"]]
@@ -212,7 +263,6 @@ while running:
             text = font_small.render(pdata["name"], True, (255, 255, 255))
             screen.blit(text, (pdata["x"], pdata["y"] - 20))
 
-    # Show door status messages
     y_offset = 20
     for pid, role in standing_status.items():
         standing_text = f"{role} is standing on their door!"
@@ -223,17 +273,17 @@ while running:
         screen.blit(text_surface, (20, y_offset))
         y_offset += 40
 
-    # Display game timer
     if start_time:
         elapsed_time = time.time() - start_time
         minutes = int(elapsed_time // 60)
         seconds = int(elapsed_time % 60)
-        timer_text = font.render(f"Time: {minutes:02}:{seconds:02}", True, (255, 255, 255))
+        timer_text = font.render(
+            f"Time: {minutes:02}:{seconds:02}", True, (255, 255, 255)
+        )
         timer_rect = timer_text.get_rect(center=(500, 30))
         screen.blit(timer_text, timer_rect)
 
-
     pygame.display.flip()
 
-# Clean up when quitting
+# --- Cleanup ---
 pygame.quit()

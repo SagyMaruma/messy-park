@@ -5,7 +5,7 @@ import time
 from pymongo import MongoClient
 
 # Server configuration
-IP = "0.0.0.0"
+IP = "127.0.0.1"
 PORT = 5555
 BUFFER_SIZE = 4096
 
@@ -28,12 +28,16 @@ client = MongoClient("mongodb://localhost:27017/")
 db = client["fire_and_water_game"]
 results_collection = db["game_results"]
 
+
 # Function to handle incoming messages from clients
 def handle_clients():
     global start_time
     while True:
         try:
             data, addr = server_socket.recvfrom(BUFFER_SIZE)
+
+            # Print received data for debugging
+            print(f"Received data: {data} from {addr}")  # Debug print statement
 
             # Player position and status update
             if len(data) == struct.calcsize("2i?b"):
@@ -44,8 +48,12 @@ def handle_clients():
                     players[addr]["facing_right"] = facing_right
                     standing_on_doors[addr] = bool(on_door)
             else:
-                # Initial player connection
+                # Initial player connection (expecting the name as a string)
                 message = data.decode()
+                print(
+                    f"Decoded message: {message}"
+                )  # Debug print statement for the player name
+
                 if addr not in players and len(players) < 2:
                     player_id = len(players) + 1
                     role = roles[player_id - 1]
@@ -57,10 +65,14 @@ def handle_clients():
                         "role": role,
                         "x": start_x,
                         "y": start_y,
-                        "facing_right": True
+                        "facing_right": True,
                     }
                     standing_on_doors[addr] = False
                     print(f"{message} joined as {role}")
+                    # Print the names of players joining
+                    print(
+                        f"Player {message} has joined the game."
+                    )  # This will print to terminal when a player joins
                     # Send assigned role and ID to the player
                     server_socket.sendto(f"{player_id},{role}".encode(), addr)
 
@@ -70,6 +82,7 @@ def handle_clients():
                         print("Both players connected. Starting timer!")
         except Exception as e:
             print(f"Error: {e}")
+
 
 # Function to continuously broadcast player positions and handle level progression
 def send_positions():
@@ -105,18 +118,21 @@ def send_positions():
                         total_time = round(end_time - start_time, 2)
                         print(f"Game finished! Total time: {total_time} seconds.")
                         for addr in players:
-                            server_socket.sendto(f"GAME_OVER:{total_time}".encode(), addr)
+                            server_socket.sendto(
+                                f"GAME_OVER:{total_time}".encode(), addr
+                            )
 
                         result = {
                             "player1": list(players.values())[0]["name"],
                             "player2": list(players.values())[1]["name"],
                             "total_time_seconds": total_time,
-                            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+                            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                         }
                         results_collection.insert_one(result)
                         print("Saved game result to MongoDB.")
                         game_over = True
         time.sleep(0.033)  # approx 30 FPS update rate
+
 
 # Start server threads
 threading.Thread(target=handle_clients, daemon=True).start()
