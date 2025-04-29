@@ -15,35 +15,26 @@ class Player:
         self.speed = 5
         self.facing_right = True
         self.font = pygame.font.SysFont(None, 24)
-
-        # Particle effects
         self.particles = []
-
-        # Respawn properties
         self.respawn_time = None
         self.is_respawning = False
 
-    def respawn(self):
-        if self.player_id == 1:
-            self.rect.x, self.rect.y = 100, 300  # Fire player start
-        else:
-            self.rect.x, self.rect.y = 600, 300  # Water player start
-
+    def respawn(self, start_x, start_y):
+        self.rect.x, self.rect.y = start_x, start_y
         self.velocity_y = 0
         self.is_jumping = False
         self.is_respawning = True
         self.respawn_time = time.time()
 
     def update_respawn(self):
-        # Handle the respawn flash effect
         if self.is_respawning:
-            if time.time() - self.respawn_time < 0.5:  # Flashing for half a second
+            if time.time() - self.respawn_time < 0.5:
                 if int(time.time() * 10) % 2 == 0:
-                    self.color = (255, 255, 255)  # Flash white
+                    self.color = (255, 255, 255)
                 else:
-                    self.color = (255, 0, 0) if self.role == "Fire" else (0, 0, 255)  # Fire/Water color
+                    self.color = (255, 0, 0) if self.role == "Fire" else (0, 0, 255)
             else:
-                self.is_respawning = False  # Stop respawn flash
+                self.is_respawning = False
 
     def handle_input(self, keys):
         moving = False
@@ -59,16 +50,11 @@ class Player:
             self.is_jumping = True
             self.velocity_y = self.jump_speed
 
-        # Create particles if moving
         if moving or self.is_jumping:
             self.create_particles()
 
     def create_particles(self):
-        if self.role == "Fire":
-            color = (255, 100, 0)
-        else:
-            color = (0, 150, 255)
-
+        color = (255, 100, 0) if self.role == "Fire" else (0, 150, 255)
         particle = [
             self.rect.centerx,
             self.rect.centery,
@@ -81,23 +67,23 @@ class Player:
 
     def update_particles(self):
         for particle in self.particles:
-            particle[0] += particle[3]  # x move
-            particle[1] += particle[4]  # y move
-            particle[2] -= 0.1  # shrink
+            particle[0] += particle[3]
+            particle[1] += particle[4]
+            particle[2] -= 0.1
         self.particles = [p for p in self.particles if p[2] > 0]
 
     def apply_gravity(self):
         self.velocity_y += self.gravity
         self.rect.y += self.velocity_y
 
-    def check_floor_collision(self, floors):
+    def check_floor_collision(self, floors, start_positions):
         self.is_jumping = True
         for floor in floors:
             if self.rect.colliderect(floor.rect):
                 if not floor.can_stand(self.role):
-                    # Player is on a forbidden floor — respawn!
-                    self.respawn()
-                    return  # Skip rest of collision
+                    start_x, start_y = start_positions[self.role]
+                    self.respawn(start_x, start_y)
+                    return
                 if self.velocity_y > 0:
                     self.rect.bottom = floor.rect.top
                     self.velocity_y = 0
@@ -109,16 +95,10 @@ class Player:
 
     def draw(self, screen):
         self.update_particles()
-        self.update_respawn()  # Check for respawn effect
-
-        # Draw particles
+        self.update_respawn()
         for particle in self.particles:
             pygame.draw.circle(screen, particle[5], (int(particle[0]), int(particle[1])), int(particle[2]))
-
-        # Draw player rectangle
         pygame.draw.rect(screen, self.color, self.rect)
-
-        # Draw player name
         name_surface = self.font.render(self.name, True, (255, 255, 255))
         name_rect = name_surface.get_rect(center=(self.rect.centerx, self.rect.top - 10))
         screen.blit(name_surface, name_rect)
