@@ -44,22 +44,27 @@ colors = {"Fire": (255, 0, 0), "Water": (0, 0, 255)}
 
 levels = [
     {
-        "start_positions": {"Fire": (100, 300), "Water": (600, 300)},
+        "start_positions": {"Fire": (10,750), "Water": (10, 650)},
         "floors": [
-            Floor(0, 780, 1000, 20, "normal"),
-            Floor(0, 700, 100, 20, "normal"),
-            Floor(850, 700, 150, 20, "normal"),
-            Floor(0, 580, 700, 20, "normal"),
-            Floor(0, 500, 750, 20, "normal"),
+            Floor(0, 780, 1000, 20, "normal"),#ריצפה ראשית
+            Floor(0, 700, 100, 20, "normal"),#ריצפה צד ימין קטנה
+            Floor(850, 700, 150, 20, "normal"),#רצפה צד שמאל קטנה
+            Floor(0, 620, 700, 20, "normal"),#ריצפה ארוכה מעל ריצות קטנות
+            Floor(0, 380, 680, 20, "normal"),#ריצפה מעל 
+            Floor(0, 380, 680, 20, "normal"),#ריצפה מעל 
+            Floor(380, 250, 1000, 20, "normal"),#ריצפה מעל 
+            Floor(0, 150, 250, 20, "normal"),#ריצפה מעל 
+            Floor(800, 150, 200, 20, "normal"),#ריצפה מעל 
             Floor(400, 500, 200, 20, "fire"),
             Floor(500, 500, 200, 20, "green")
         ],
         "doors": [
-            Door(100, 570, (255, 0, 0)),
-            Door(800, 570, (0, 0, 255))
+            Door(40, 90, (255, 0, 0)),
+            Door(840, 90, (0, 0, 255))
         ],
-        "buttons": [Button(400, 660)],
-        "elevators": [Elevator(400, 600, 80, 20, 120)]
+        "buttons": [Button(70, 610),Button(70, 370)],#כפתורים
+        
+        "elevators": [Elevator(800, 620, 120, 20, 140)]
     },
     {
         "start_positions": {"Fire": (150, 300), "Water": (700, 300)},
@@ -205,5 +210,6 @@ while running:
         screen.blit(timer_text, (450, 30))
 
     pygame.display.flip()
+    print(pygame.mouse.get_pos())
 
 pygame.quit()
