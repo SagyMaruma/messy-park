@@ -15,6 +15,7 @@ server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 server_socket.bind((IP, PORT))
 logging.info(f"Server started on {IP}:{PORT}")
 
+bullets = []  # Each bullet is a dict: {"x": int, "y": int, "dir": int}
 players = {}
 roles = ["Fire", "Water"]
 standing_on_doors = {}
@@ -68,6 +69,7 @@ def handle_clients():
 
 def send_positions():
     global current_level, game_over, button_active
+    bullet_timer = 0
     while True:
         if len(players) == 2:
             e = elevator_states[current_level]
@@ -77,6 +79,20 @@ def send_positions():
                 e["y"] += elevator_speed
             button_active = False
 
+            # Update bullets
+            bullet_timer += 1
+            if bullet_timer >= 20:  # spawn bullet every ~20 frames (~3 times/sec)
+                bullet_timer = 0
+                bullets.append({"x": 150, "y": 410, "dir": 1})  # Example position/direction
+
+            for bullet in bullets[:]:
+                bullet["x"] += bullet["dir"] * 5
+                if bullet["x"] < 0 or bullet["x"] > 1000:
+                    bullets.remove(bullet)
+
+            # Format bullet positions
+            bullet_data = ";".join(f'{b["x"]},{b["y"]}' for b in bullets)
+
             data_lines = []
             for p in players.values():
                 data_lines.append(f"{p['id']}|{p['name']}|{p['role']}|{p['x']}|{p['y']}|{int(p['facing_right'])}")
@@ -85,6 +101,7 @@ def send_positions():
             for addr in players:
                 server_socket.sendto(message.encode(), addr)
                 server_socket.sendto(f"ELEVATOR:{e['y']}".encode(), addr)
+                server_socket.sendto(f"BULLETS:{bullet_data}".encode(), addr)
 
             if all(standing_on_doors.values()) and not game_over:
                 if current_level < max_levels - 1:

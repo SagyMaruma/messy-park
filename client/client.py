@@ -24,7 +24,7 @@ client_socket.setblocking(False)
 
 name = input("Enter your player name: ")
 client_socket.sendto(name.encode(), (SERVER_IP, SERVER_PORT))
-
+remote_bullets = []  # List of pygame.Rect
 player_id, role = None, None
 players = {}
 my_player = None
@@ -34,6 +34,8 @@ running_game = False
 waiting_for_players = True
 game_over = False
 elevator_y = 600
+last_hit_time = 0
+hit_cooldown = 1.0  # seconds
 
 pygame.init()
 screen = pygame.display.set_mode((1000, 800))
@@ -143,6 +145,16 @@ def receive_data():
                     elevator.update_position(elevator_y)
                 continue
 
+            if message.startswith("BULLETS:"):
+                bullet_strs = message[len("BULLETS:"):].split(";")
+                remote_bullets.clear()
+                for b_str in bullet_strs:
+                    if b_str.strip() == "":
+                        continue
+                    bx, by = map(int, b_str.split(","))
+                    remote_bullets.append(pygame.Rect(bx, by, 10, 5))
+                continue
+
             if "," in message:
                 player_id, role = message.split(",")
                 player_id = int(player_id)
@@ -152,7 +164,13 @@ def receive_data():
                 for p_data in message.split(";"):
                     pid, pname, prole, x, y, facing_right = p_data.split("|")
                     pid = int(pid)
-                    players[pid] = {"name": pname, "role": prole, "x": int(x), "y": int(y), "facing_right": bool(int(facing_right))}
+                    players[pid] = {
+                        "name": pname,
+                        "role": prole,
+                        "x": int(x),
+                        "y": int(y),
+                        "facing_right": bool(int(facing_right))
+                    }
 
                 if len(players) >= 2:
                     waiting_for_players = False
@@ -161,6 +179,7 @@ def receive_data():
                         running_game = True
         except:
             continue
+
 
 threading.Thread(target=receive_data, daemon=True).start()
 
@@ -204,14 +223,13 @@ while running:
         rect = pygame.Rect(pdata["x"], pdata["y"], 25, 25)
         if rect.colliderect(door.rect):
             standing_status[pid] = pdata["role"]
-        # Gun logic
-    for gun in levels[current_level].get("guns", []):
-        gun.update(screen)
-        gun.draw(screen)
-        if gun.shoot(my_player):
-            # You can trigger respawn here
+    # Draw bullets from server and check collisions
+    for bullet in remote_bullets:
+        pygame.draw.rect(screen, (255, 0, 0), bullet)
+        if my_player and bullet.colliderect(my_player.rect):
             start_x, start_y = levels[current_level]["start_positions"][my_player.role]
             my_player.respawn(start_x, start_y)
+
 
 
     door = levels[current_level]["doors"][my_player.player_id - 1]
