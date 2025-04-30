@@ -75,7 +75,7 @@ class Player:
     def apply_gravity(self):
         self.velocity_y += self.gravity
         self.rect.y += self.velocity_y
-
+    
     def check_floor_collision(self, floors, start_positions):
         self.is_jumping = True
         for floor in floors:
@@ -92,6 +92,11 @@ class Player:
                     self.rect.top = floor.rect.bottom
                     self.velocity_y = 0
                     self.is_jumping = False
+    def shoot(self):
+        bullet_x = self.rect.right if self.facing_right else self.rect.left - 10
+        bullet_y = self.rect.centery
+        direction = 1 if self.facing_right else -1
+        return bullet_x, bullet_y, direction
 
     def draw(self, screen):
         self.update_particles()

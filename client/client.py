@@ -27,7 +27,7 @@ client_socket.sendto(name.encode(), (SERVER_IP, SERVER_PORT))
 player_id, role = None, None
 players = {}
 my_player = None
-current_level = 0
+current_level = 1
 start_time = None
 running_game = False
 waiting_for_players = True
@@ -68,12 +68,37 @@ levels = [
         
         "elevators": [Elevator(800, 620, 120, 20, 140)]
     },
+    #level2
     {
-        "start_positions": {"Fire": (150, 300), "Water": (700, 300)},
-        "floors": [Floor(0, 600, 1000, 20, "normal"), Floor(300, 450, 400, 20, "water")],
-        "doors": [Door(120, 570, (255, 0, 0)), Door(850, 570, (0, 0, 255))],
-        "buttons": [Button(500, 560)],
-        "elevators": [Elevator(500, 600, 80, 20, 100)]
+        "start_positions": {"Fire": (0, 750), "Water": (40, 750)},
+        
+        "floors": [
+                Floor(0, 780, 1000, 20, "normal"),#ריצפה ראשית
+            Floor(0, 700, 180, 20, "water"),#ריצפה צד ימין קטנה
+            Floor(700, 700, 100, 20, "normal"),#ריצפה צד ימין שמאל
+
+            Floor(0, 600, 100, 20, "normal"),#ריצפה מעל ריצפה קטה צד ימין
+            
+
+            Floor(0, 450, 750, 20, "normal"),#ריצפה מעל 
+            Floor(600, 449.9, 100, 20, "water"),
+
+            Floor(250, 320, 200, 20, "water"),
+            Floor(550, 320, 200, 20, "fire"),
+            Floor(350, 250, 300, 20, "normal"),#ריצפה מעל 
+            
+            Floor(450, 249, 100, 20, "green"),
+
+            #ריצפות של דלתות
+            Floor(0, 150, 250, 20, "normal"),#ריצפה מעל 
+            Floor(750, 150, 250, 20, "normal"),#ריצפה מעל 
+
+                    
+                    
+            ],
+        "doors": [Door(40, 90, (255, 0, 0)),Door(840, 90, (0, 0, 255))],
+        "buttons": [Button(50, 440),Button(50, 690)],
+        "elevators": [Elevator(840, 400, 1000, 20, 500)]
     },
     {
         "start_positions": {"Fire": (200, 300), "Water": (750, 300)},
@@ -210,7 +235,8 @@ while running:
         elapsed_time = time.time() - start_time
         timer_text = font.render(f"Time: {int(elapsed_time // 60):02}:{int(elapsed_time % 60):02}", True, (255, 255, 255))
         screen.blit(timer_text, (450, 30))
-
+    
+    
     pygame.display.flip()
     print(pygame.mouse.get_pos())
 
