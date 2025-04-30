@@ -83,9 +83,11 @@ levels = [
 
             Floor(0, 450, 750, 20, "normal"),#ריצפה מעל 
             Floor(600, 449.9, 100, 20, "water"),
-
-            Floor(250, 320, 200, 20, "water"),
-            Floor(550, 320, 200, 20, "fire"),
+            Floor(250, 320, 200, 20, "normal"),
+            Floor(550, 320, 200, 20, "normal"),
+            Floor(250, 319, 200, 20, "water"),
+            Floor(550, 319, 200, 20, "fire"),
+            
             Floor(350, 250, 300, 20, "normal"),#ריצפה מעל 
             
             Floor(450, 249, 100, 20, "green"),
