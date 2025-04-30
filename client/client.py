@@ -13,6 +13,7 @@ from floor import Floor
 from door import Door
 from button import Button
 from elevator import Elevator
+from gun import Gun
 
 SERVER_IP = "127.0.0.1"
 SERVER_PORT = 5555
@@ -98,7 +99,12 @@ levels = [
             ],
         "doors": [Door(40, 90, (255, 0, 0)),Door(840, 90, (0, 0, 255))],
         "buttons": [Button(50, 440),Button(50, 690)],
-        "elevators": [Elevator(840, 400, 1000, 20, 500)]
+        "elevators": [Elevator(840, 400, 1000, 20, 500)],
+        "guns": [  # <-- Add this section
+            Gun(150, 410, direction=1, shoot_interval=120),  # Slower gun
+            Gun(20, 560, direction=1, shoot_interval=50)    # Faster gun
+        ]
+        
     },
     {
         "start_positions": {"Fire": (200, 300), "Water": (750, 300)},
@@ -196,6 +202,15 @@ while running:
         rect = pygame.Rect(pdata["x"], pdata["y"], 25, 25)
         if rect.colliderect(door.rect):
             standing_status[pid] = pdata["role"]
+        # Gun logic
+    for gun in levels[current_level].get("guns", []):
+        gun.update(screen)
+        gun.draw(screen)
+        if gun.shoot(my_player):
+            # You can trigger respawn here
+            start_x, start_y = levels[current_level]["start_positions"][my_player.role]
+            my_player.respawn(start_x, start_y)
+
 
     door = levels[current_level]["doors"][my_player.player_id - 1]
     if my_player.rect.colliderect(door.rect):
