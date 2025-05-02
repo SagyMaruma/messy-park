@@ -28,8 +28,8 @@ button_active = False
 
 # Elevator state per level
 elevator_states = {
-    0: {"y": 600, "max_up": 480, "base_y": 600},
-    1: {"y": 600, "max_up": 500, "base_y": 600},
+    0: {"y": 600, "max_up": 450, "base_y": 600},
+    1: {"y": 620, "max_up": 450, "base_y": 620},
     2: {"y": 600, "max_up": 500, "base_y": 600}
 }
 elevator_speed = 2
