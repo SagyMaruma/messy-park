@@ -117,6 +117,7 @@ def send_positions():
             if all(standing_on_doors.values()) and not game_over:
                 if current_level < max_levels - 1:
                     current_level += 1
+                    bullets.clear()  # <---- כאן נמחק את הקליעים הקיימים
                     for addr in players:
                         server_socket.sendto(f"LEVEL:{current_level}".encode(), addr)
                     for addr in standing_on_doors:

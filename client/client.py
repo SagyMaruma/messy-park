@@ -131,8 +131,11 @@ def receive_data():
                 if my_player:
                     pos = levels[current_level]["start_positions"][my_player.role]
                     my_player.respawn(*pos)
-                    
+
+                # Clear the list of bullets when the level changes
+                remote_bullets.clear()
                 continue
+
 
             if message.startswith("GAME_OVER:"):
                 total_time = float(message.split(":")[1])
@@ -214,7 +217,7 @@ while running:
         my_player.handle_input(keys)
         my_player.apply_gravity()
         my_player.check_floor_collision(levels[current_level]["floors"] + levels[current_level]["elevators"], levels[current_level]["start_positions"])
-
+    
                 # הגבלת מיקום השחקן במסך כך שלא יוכל לצאת מעבר לגבולות
         if my_player.rect.x < 0:
             my_player.rect.x = 0
@@ -226,7 +229,7 @@ while running:
         elif my_player.rect.y > screen.get_height() - my_player.rect.height:
             my_player.rect.y = screen.get_height() - my_player.rect.height
 
-            
+
     for button in levels[current_level]["buttons"]:
         button.update([my_player])
 
