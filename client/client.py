@@ -105,8 +105,8 @@ levels = [
         "buttons": [Button(50, 440),Button(50, 690)],
         "elevators": [Elevator(840, 400, 1000, 20, 500)],
         "guns": [  # <-- Add this section
-            Gun(150, 410, direction=1, shoot_interval=120),  # Slower gun
-            Gun(20, 560, direction=1, shoot_interval=50)    # Faster gun
+            Gun(150, 410, direction=1),  # Slower gun from the server
+            Gun(20, 560, direction=1)    # Faster gun from the server
         ]
         
     },
@@ -131,6 +131,7 @@ def receive_data():
                 if my_player:
                     pos = levels[current_level]["start_positions"][my_player.role]
                     my_player.respawn(*pos)
+                    
                 continue
 
             if message.startswith("GAME_OVER:"):
@@ -214,6 +215,18 @@ while running:
         my_player.apply_gravity()
         my_player.check_floor_collision(levels[current_level]["floors"] + levels[current_level]["elevators"], levels[current_level]["start_positions"])
 
+                # הגבלת מיקום השחקן במסך כך שלא יוכל לצאת מעבר לגבולות
+        if my_player.rect.x < 0:
+            my_player.rect.x = 0
+        elif my_player.rect.x > screen.get_width() - my_player.rect.width:
+            my_player.rect.x = screen.get_width() - my_player.rect.width
+
+        if my_player.rect.y < 0:
+            my_player.rect.y = 0
+        elif my_player.rect.y > screen.get_height() - my_player.rect.height:
+            my_player.rect.y = screen.get_height() - my_player.rect.height
+
+            
     for button in levels[current_level]["buttons"]:
         button.update([my_player])
 

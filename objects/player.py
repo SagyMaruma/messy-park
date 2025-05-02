@@ -6,6 +6,7 @@ class Player:
         self.player_id = player_id
         self.name = name
         self.role = role
+        self.base_color = color  # נשמר הצבע המקורי
         self.color = color
         self.rect = pygame.Rect(start_x, start_y, 25, 25)
         self.velocity_y = 0
@@ -29,11 +30,10 @@ class Player:
     def update_respawn(self):
         if self.is_respawning:
             if time.time() - self.respawn_time < 0.5:
-                if int(time.time() * 10) % 2 == 0:
-                    self.color = (255, 255, 255)
-                else:
-                    self.color = (255, 0, 0) if self.role == "Fire" else (0, 0, 255)
+                # מהבהב לבן ואח"כ חוזר לצבע המקורי
+                self.color = (255, 255, 255) if int(time.time() * 10) % 2 == 0 else self.base_color
             else:
+                self.color = self.base_color
                 self.is_respawning = False
 
     def handle_input(self, keys):
