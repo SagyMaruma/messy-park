@@ -34,6 +34,14 @@ elevator_states = {
 }
 elevator_speed = 2
 
+guns_by_level = {
+    1: [
+        {"x": 150, "y": 410, "dir": 1, "interval": 2, "last_shot": 0},
+        {"x": 20, "y": 560, "dir": 1, "interval": 1.5, "last_shot": 0}
+    ],
+    # תוכל להוסיף רובים גם לרמות אחרות כאן
+}
+
 client = MongoClient("mongodb://localhost:27017/")
 db = client["fire_and_water_game"]
 results_collection = db["game_results"]
@@ -79,11 +87,14 @@ def send_positions():
                 e["y"] += elevator_speed
             button_active = False
 
-            # Update bullets
-            bullet_timer += 1
-            if bullet_timer >= 20:  # spawn bullet every ~20 frames (~3 times/sec)
-                bullet_timer = 0
-                bullets.append({"x": 150, "y": 410, "dir": 1})  # Example position/direction
+
+            now = time.time() 
+            if current_level in guns_by_level:
+                for gun in guns_by_level[current_level]:
+                    if now - gun["last_shot"] >= gun["interval"]:
+                        gun["last_shot"] = now
+                        bullets.append({"x": gun["x"], "y": gun["y"], "dir": gun["dir"]})
+
 
             for bullet in bullets[:]:
                 bullet["x"] += bullet["dir"] * 5

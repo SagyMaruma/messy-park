@@ -223,13 +223,17 @@ while running:
         rect = pygame.Rect(pdata["x"], pdata["y"], 25, 25)
         if rect.colliderect(door.rect):
             standing_status[pid] = pdata["role"]
-    # Draw bullets from server and check collisions
+    # ציור כדורים מהשרת ובדיקה אם פוגעים בי
     for bullet in remote_bullets:
         pygame.draw.rect(screen, (255, 0, 0), bullet)
         if my_player and bullet.colliderect(my_player.rect):
             start_x, start_y = levels[current_level]["start_positions"][my_player.role]
             my_player.respawn(start_x, start_y)
-
+    
+        # ציור רובים (רק ויזואלית)
+    if "guns" in levels[current_level]:
+        for gun in levels[current_level]["guns"]:
+            gun.draw(screen)
 
 
     door = levels[current_level]["doors"][my_player.player_id - 1]
@@ -251,7 +255,7 @@ while running:
         door.draw(screen)
     if my_player:
         my_player.draw(screen)
-
+    
     for pid, pdata in players.items():
         if pid != my_player.player_id:
             color = colors[pdata["role"]]
