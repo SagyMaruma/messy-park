@@ -8,7 +8,7 @@ import logging
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-IP = "127.0.0.1"
+IP = "10.0.0.5"
 PORT = 5555
 BUFFER_SIZE = 4096
 
