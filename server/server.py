@@ -1,4 +1,5 @@
 # --- server.py ---
+import os
 import socket
 import threading
 import struct
@@ -46,15 +47,21 @@ client = MongoClient("mongodb://localhost:27017/")
 db = client["fire_and_water_game"]
 results_collection = db["game_results"]
 
+def xor(data: bytes, key: bytes) -> bytes:
+        return bytes(
+            b ^ key[i % len(key)] for i, b in enumerate(data)
+        )
+
 def handle_clients():
-    global start_time, button_active
+    global start_time, button_active,encryption_key
+    encryption_key = os.urandom(11)
     while True:
         try:
             data, addr = server_socket.recvfrom(BUFFER_SIZE)
             last_seen[addr] = time.time()
 
             if len(data) == struct.calcsize("2i?b?"):
-                x, y, facing_right, on_door, button = struct.unpack("2i?b?", data)
+                x, y, facing_right, on_door, button = struct.unpack("2i?b?", xor(data,encryption_key))
                 if addr in players:
                     players[addr]["x"] = x
                     players[addr]["y"] = y
@@ -72,7 +79,10 @@ def handle_clients():
                     server_socket.sendto(f"{pid},{role}".encode(), addr)
                     if len(players) == 2:
                         start_time = time.time()
-        except:
+                    server_socket.sendto(encryption_key,addr)
+
+        except Exception as e:
+            print(f"error occured while sending data to client {e}")
             continue
 
 def send_positions():
@@ -110,22 +120,22 @@ def send_positions():
             message = ";".join(data_lines)
 
             for addr in players:
-                server_socket.sendto(message.encode(), addr)
-                server_socket.sendto(f"ELEVATOR:{e['y']}".encode(), addr)
-                server_socket.sendto(f"BULLETS:{bullet_data}".encode(), addr)
+                server_socket.sendto(xor(message.encode(),encryption_key), addr)
+                server_socket.sendto(xor(f"ELEVATOR:{e['y']}".encode(),encryption_key), addr)
+                server_socket.sendto(xor(f"BULLETS:{bullet_data}".encode(),encryption_key), addr)
 
             if all(standing_on_doors.values()) and not game_over:
                 if current_level < max_levels - 1:
                     current_level += 1
                     bullets.clear()  # <---- כאן נמחק את הקליעים הקיימים
                     for addr in players:
-                        server_socket.sendto(f"LEVEL:{current_level}".encode(), addr)
+                        server_socket.sendto(xor(f"LEVEL:{current_level}".encode(),encryption_key), addr)
                     for addr in standing_on_doors:
                         standing_on_doors[addr] = False
                 else:
                     total_time = round(time.time() - start_time, 2)
                     for addr in players:
-                        server_socket.sendto(f"GAME_OVER:{total_time}".encode(), addr)
+                        server_socket.sendto(xor(f"GAME_OVER:{total_time}".encode(),encryption_key), addr)
                     results_collection.insert_one({
                         "player1": list(players.values())[0]["name"],
                         "player2": list(players.values())[1]["name"],
@@ -135,9 +145,12 @@ def send_positions():
                     game_over = True
         time.sleep(0.033)
 
+
 threading.Thread(target=handle_clients, daemon=True).start()
 threading.Thread(target=send_positions, daemon=True).start()
 
 while True:
     time.sleep(1)
+
+
 
