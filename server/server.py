@@ -5,7 +5,7 @@ import threading
 import struct
 import time
 import logging
-from pymongo import MongoClient
+
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 IP = "127.0.0.1"
@@ -43,9 +43,6 @@ guns_by_level = {
     # תוכל להוסיף רובים גם לרמות אחרות כאן
 }
 
-client = MongoClient("mongodb://localhost:27017/")
-db = client["fire_and_water_game"]
-results_collection = db["game_results"]
 
 def xor(data: bytes, key: bytes) -> bytes:
         return bytes(
@@ -136,12 +133,6 @@ def send_positions():
                     total_time = round(time.time() - start_time, 2)
                     for addr in players:
                         server_socket.sendto(xor(f"GAME_OVER:{total_time}".encode(),encryption_key), addr)
-                    results_collection.insert_one({
-                        "player1": list(players.values())[0]["name"],
-                        "player2": list(players.values())[1]["name"],
-                        "total_time_seconds": total_time,
-                        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
-                    })
                     game_over = True
         time.sleep(0.033)
 

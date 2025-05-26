@@ -1,5 +1,6 @@
 import os
 import socket
+from time import sleep
 from PyQt6.QtWidgets import QWidget,QApplication,QVBoxLayout,QLabel,QLineEdit,QPushButton,QHBoxLayout
 import sys
 from client import main
@@ -59,7 +60,7 @@ class LoginWindow(QWidget):
             self.local_ip = get_local_ip()
             print(f"game server running on {self.local_ip}")
             self.ip_edit.setText(self.local_ip)
-
+            sleep(1)
             self.join_server()
     
     def join_server(self):
