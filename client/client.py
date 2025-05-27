@@ -1,5 +1,3 @@
-# client.py
-
 import sys
 import os
 import socket
@@ -9,17 +7,16 @@ import threading
 import time
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'objects'))
-
 from player import Player
-
-from levels import LevelManager  # ← מחלקת שלבים חדשה
+from levels import LevelManager  # מחלקת שלבים
 
 def main(name, ip):
-    global player_id, role, my_player, waiting_for_players, running_game, current_level, start_time, game_over, elevator_y, encryption_key, last_hit_time, hit_cooldown
+    global player_id, role, my_player, waiting_for_players, running_game
+    global current_level, start_time, game_over, elevator_y, encryption_key
+    global last_hit_time, hit_cooldown, total_game_time
+
     def xor(data: bytes, key: bytes) -> bytes:
-        return bytes(
-            b ^ key[i % len(key)] for i, b in enumerate(data)
-        )
+        return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
 
     SERVER_IP = ip
     SERVER_PORT = 5555
@@ -27,9 +24,9 @@ def main(name, ip):
 
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     client_socket.setblocking(True)
-
     client_socket.sendto(name.encode(), (SERVER_IP, SERVER_PORT))
-    remote_bullets = []  # List of pygame.Rect
+
+    remote_bullets = []
     player_id, role = None, None
     players = {}
     my_player = None
@@ -38,15 +35,17 @@ def main(name, ip):
     running_game = False
     waiting_for_players = True
     game_over = False
+    total_game_time = 0
     elevator_y = 600
     last_hit_time = 0
-    hit_cooldown = 1.0  # seconds
+    hit_cooldown = 1.0
 
     pygame.init()
     screen = pygame.display.set_mode((1000, 800))
     pygame.display.set_caption(f"Fire and Water Game - {ip}")
     clock = pygame.time.Clock()
     font = pygame.font.Font(None, 36)
+    font_small = pygame.font.Font(None, 24)
 
     colors = {"Fire": (255, 0, 0), "Water": (0, 0, 255)}
 
@@ -54,8 +53,10 @@ def main(name, ip):
     levels = level_manager.levels
 
     def receive_data():
-        global player_id, role, my_player, waiting_for_players, running_game, current_level, start_time, game_over, elevator_y, encryption_key
+        
+        global player_id, role,start_time, total_game_time, game_over, my_player, waiting_for_players, running_game, current_level, elevator_y, encryption_key
         encryption_key = None
+
         while True:
             try:
                 data, _ = client_socket.recvfrom(BUFFER_SIZE)
@@ -70,9 +71,8 @@ def main(name, ip):
                     continue
 
                 if message.startswith("GAME_OVER:"):
-                    total_time = float(message.split(":")[1])
+                    total_game_time = float(message.split(":")[1])
                     game_over = True
-                    start_time = time.time() - total_time
                     continue
 
                 if message.startswith("ELEVATOR:"):
@@ -111,7 +111,7 @@ def main(name, ip):
 
                     if len(players) >= 2:
                         waiting_for_players = False
-                        if start_time:
+                        if start_time is None:
                             start_time = time.time()
                             running_game = True
             except Exception as e:
@@ -121,7 +121,6 @@ def main(name, ip):
     threading.Thread(target=receive_data, daemon=True).start()
 
     running = True
-    font_small = pygame.font.Font(None, 24)
 
     while running:
         clock.tick(60)
@@ -139,27 +138,22 @@ def main(name, ip):
             continue
 
         if game_over:
-            total_time = time.time() - start_time
             screen.fill((0, 0, 0))
             screen.blit(font.render("Game Finished!", True, (0, 255, 0)), (400, 300))
-            screen.blit(font.render(f"Total Time: {int(total_time // 60):02}:{int(total_time % 60):02}", True, (0, 255, 0)), (400, 350))
+            screen.blit(font.render(f"Total Time: {int(total_game_time // 60):02}:{int(total_game_time % 60):02}", True, (0, 255, 0)), (400, 350))
             pygame.display.flip()
             continue
 
         if my_player:
             my_player.handle_input(keys)
             my_player.apply_gravity()
-            my_player.check_floor_collision(levels[current_level]["floors"] + levels[current_level]["elevators"], levels[current_level]["start_positions"])
+            my_player.check_floor_collision(
+                levels[current_level]["floors"] + levels[current_level]["elevators"],
+                levels[current_level]["start_positions"]
+            )
 
-            if my_player.rect.x < 0:
-                my_player.rect.x = 0
-            elif my_player.rect.x > screen.get_width() - my_player.rect.width:
-                my_player.rect.x = screen.get_width() - my_player.rect.width
-
-            if my_player.rect.y < 0:
-                my_player.rect.y = 0
-            elif my_player.rect.y > screen.get_height() - my_player.rect.height:
-                my_player.rect.y = screen.get_height() - my_player.rect.height
+            my_player.rect.x = max(0, min(screen.get_width() - my_player.rect.width, my_player.rect.x))
+            my_player.rect.y = max(0, min(screen.get_height() - my_player.rect.height, my_player.rect.y))
 
         for button in levels[current_level]["buttons"]:
             button.update([my_player])
@@ -174,8 +168,8 @@ def main(name, ip):
         for bullet in remote_bullets:
             pygame.draw.rect(screen, (255, 0, 0), bullet)
             if my_player and bullet.colliderect(my_player.rect):
-                start_x, start_y = levels[current_level]["start_positions"][my_player.role]
-                my_player.respawn(start_x, start_y)
+                x, y = levels[current_level]["start_positions"][my_player.role]
+                my_player.respawn(x, y)
 
         if "guns" in levels[current_level]:
             for gun in levels[current_level]["guns"]:
@@ -215,12 +209,11 @@ def main(name, ip):
             screen.blit(font.render(text, True, color), (20, y_offset))
             y_offset += 40
 
-        if start_time:
+        if start_time and not game_over:
             elapsed_time = time.time() - start_time
             timer_text = font.render(f"Time: {int(elapsed_time // 60):02}:{int(elapsed_time % 60):02}", True, (255, 255, 255))
             screen.blit(timer_text, (450, 30))
 
         pygame.display.flip()
-        print(pygame.mouse.get_pos())
 
     pygame.quit()
