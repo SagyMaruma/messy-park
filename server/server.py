@@ -1,4 +1,5 @@
-# --- server.py ---
+# server.py
+
 import os
 import socket
 import threading
@@ -6,8 +7,8 @@ import struct
 import time
 import logging
 
-
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 IP = "10.0.0.5"
 PORT = 5555
 BUFFER_SIZE = 4096
@@ -16,18 +17,17 @@ server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 server_socket.bind((IP, PORT))
 logging.info(f"Server started on {IP}:{PORT}")
 
-bullets = []  # Each bullet is a dict: {"x": int, "y": int, "dir": int}
+bullets = []
 players = {}
 roles = ["Fire", "Water"]
 standing_on_doors = {}
 last_seen = {}
-current_level = 0
+current_level = 1
 max_levels = 3
 start_time = None
 game_over = False
 button_active = False
 
-# Elevator state per level
 elevator_states = {
     0: {"y": 600, "max_up": 450, "base_y": 600},
     1: {"y": 620, "max_up": 450, "base_y": 620},
@@ -40,25 +40,25 @@ guns_by_level = {
         {"x": 150, "y": 410, "dir": 1, "interval": 2, "last_shot": 0},
         {"x": 20, "y": 560, "dir": 1, "interval": 1.5, "last_shot": 0}
     ],
-    # תוכל להוסיף רובים גם לרמות אחרות כאן
+    # תוכל להוסיף רובים לרמות נוספות כאן
 }
 
 
 def xor(data: bytes, key: bytes) -> bytes:
-        return bytes(
-            b ^ key[i % len(key)] for i, b in enumerate(data)
-        )
+    return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
+
 
 def handle_clients():
-    global start_time, button_active,encryption_key
+    global start_time, button_active, encryption_key
     encryption_key = os.urandom(11)
+
     while True:
         try:
             data, addr = server_socket.recvfrom(BUFFER_SIZE)
             last_seen[addr] = time.time()
 
             if len(data) == struct.calcsize("2i?b?"):
-                x, y, facing_right, on_door, button = struct.unpack("2i?b?", xor(data,encryption_key))
+                x, y, facing_right, on_door, button = struct.unpack("2i?b?", xor(data, encryption_key))
                 if addr in players:
                     players[addr]["x"] = x
                     players[addr]["y"] = y
@@ -68,47 +68,57 @@ def handle_clients():
                         button_active = True
             else:
                 message = data.decode()
+
                 if addr not in players and len(players) < 2:
                     pid = len(players) + 1
                     role = roles[pid - 1]
-                    players[addr] = {"id": pid, "name": message, "role": role, "x": 100 if role == "Fire" else 600, "y": 300, "facing_right": True}
+                    players[addr] = {
+                        "id": pid,
+                        "name": message,
+                        "role": role,
+                        "x": 100 if role == "Fire" else 600,
+                        "y": 300,
+                        "facing_right": True
+                    }
                     standing_on_doors[addr] = False
                     server_socket.sendto(f"{pid},{role}".encode(), addr)
                     if len(players) == 2:
                         start_time = time.time()
-                    server_socket.sendto(encryption_key,addr)
+                    server_socket.sendto(encryption_key, addr)
+
+                elif addr not in players:
+                    # שחקן שלישי – קיבל הודעה שהוא לא יכול להתחבר
+                    server_socket.sendto("FULL".encode(), addr)
 
         except Exception as e:
-            print(f"error occured while sending data to client {e}")
+            print(f"Error occurred while handling client: {e}")
             continue
+
 
 def send_positions():
     global current_level, game_over, button_active
-    bullet_timer = 0
     while True:
         if len(players) == 2:
             e = elevator_states[current_level]
+
             if button_active and e["y"] > e["max_up"]:
                 e["y"] -= elevator_speed
             elif not button_active and e["y"] < e["base_y"]:
                 e["y"] += elevator_speed
             button_active = False
 
-
-            now = time.time() 
+            now = time.time()
             if current_level in guns_by_level:
                 for gun in guns_by_level[current_level]:
                     if now - gun["last_shot"] >= gun["interval"]:
                         gun["last_shot"] = now
                         bullets.append({"x": gun["x"], "y": gun["y"], "dir": gun["dir"]})
 
-
             for bullet in bullets[:]:
                 bullet["x"] += bullet["dir"] * 5
                 if bullet["x"] < 0 or bullet["x"] > 1000:
                     bullets.remove(bullet)
 
-            # Format bullet positions
             bullet_data = ";".join(f'{b["x"]},{b["y"]}' for b in bullets)
 
             data_lines = []
@@ -117,23 +127,24 @@ def send_positions():
             message = ";".join(data_lines)
 
             for addr in players:
-                server_socket.sendto(xor(message.encode(),encryption_key), addr)
-                server_socket.sendto(xor(f"ELEVATOR:{e['y']}".encode(),encryption_key), addr)
-                server_socket.sendto(xor(f"BULLETS:{bullet_data}".encode(),encryption_key), addr)
+                server_socket.sendto(xor(message.encode(), encryption_key), addr)
+                server_socket.sendto(xor(f"ELEVATOR:{e['y']}".encode(), encryption_key), addr)
+                server_socket.sendto(xor(f"BULLETS:{bullet_data}".encode(), encryption_key), addr)
 
             if all(standing_on_doors.values()) and not game_over:
                 if current_level < max_levels - 1:
                     current_level += 1
-                    bullets.clear()  # <---- כאן נמחק את הקליעים הקיימים
+                    bullets.clear()
                     for addr in players:
-                        server_socket.sendto(xor(f"LEVEL:{current_level}".encode(),encryption_key), addr)
+                        server_socket.sendto(xor(f"LEVEL:{current_level}".encode(), encryption_key), addr)
                     for addr in standing_on_doors:
                         standing_on_doors[addr] = False
                 else:
                     total_time = round(time.time() - start_time, 2)
                     for addr in players:
-                        server_socket.sendto(xor(f"GAME_OVER:{total_time}".encode(),encryption_key), addr)
+                        server_socket.sendto(xor(f"GAME_OVER:{total_time}".encode(), encryption_key), addr)
                     game_over = True
+
         time.sleep(0.033)
 
 
@@ -142,6 +153,3 @@ threading.Thread(target=send_positions, daemon=True).start()
 
 while True:
     time.sleep(1)
-
-
-
