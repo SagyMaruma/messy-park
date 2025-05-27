@@ -1,3 +1,5 @@
+# gui.py
+
 import os
 import socket
 from time import sleep
@@ -5,9 +7,11 @@ from PyQt6.QtWidgets import (
     QWidget, QApplication, QVBoxLayout, QLabel, QLineEdit,
     QPushButton, QHBoxLayout
 )
+from PyQt6.QtCore import Qt
 import sys
-from client import main
 from threading import Thread
+
+from client import main  # קריאה לפונקציה הראשית של המשחק
 
 
 class LoginWindow(QWidget):
@@ -59,7 +63,6 @@ class LoginWindow(QWidget):
         main_layout.addLayout(btn_layout)
         self.setLayout(main_layout)
 
-        # Game-themed stylesheet
         self.setStyleSheet("""
             QWidget {
                 background-color: #1e1e2f;
@@ -141,7 +144,6 @@ class LoginWindow(QWidget):
         ip = self.ip_edit.text().strip()
         if name and ip:
             main(name, ip)
-        return
 
 
 def get_local_ip():
@@ -154,9 +156,6 @@ def get_local_ip():
     except Exception:
         return "127.0.0.1"
 
-
-# Required for setting label alignment
-from PyQt6.QtCore import Qt
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

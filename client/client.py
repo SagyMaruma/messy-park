@@ -1,3 +1,4 @@
+# client.py
 
 import sys
 import os
@@ -8,23 +9,21 @@ import threading
 import time
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'objects'))
-from player import Player
-from floor import Floor
-from door import Door
-from button import Button
-from elevator import Elevator
-from gun import Gun
 
-def main(name,ip):
-    global player_id, role, my_player, waiting_for_players, running_game, current_level, start_time, game_over, elevator_y,encryption_key,last_hit_time,hit_cooldown
+from player import Player
+
+from levels import LevelManager  # ← מחלקת שלבים חדשה
+
+def main(name, ip):
+    global player_id, role, my_player, waiting_for_players, running_game, current_level, start_time, game_over, elevator_y, encryption_key, last_hit_time, hit_cooldown
     def xor(data: bytes, key: bytes) -> bytes:
         return bytes(
             b ^ key[i % len(key)] for i, b in enumerate(data)
         )
+
     SERVER_IP = ip
     SERVER_PORT = 5555
     BUFFER_SIZE = 4096
-    
 
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     client_socket.setblocking(True)
@@ -51,100 +50,24 @@ def main(name,ip):
 
     colors = {"Fire": (255, 0, 0), "Water": (0, 0, 255)}
 
-    levels = [
-        {
-            "start_positions": {"Fire": (10,750), "Water": (10, 650)},
-            "floors": [
-                Floor(0, 780, 1000, 20, "normal"),#ריצפה ראשית
-                Floor(0, 700, 180, 20, "normal"),#ריצפה צד ימין קטנה
-                Floor(850, 700, 150, 20, "normal"),#רצפה צד שמאל קטנה
-                Floor(0, 620, 700, 20, "normal"),#ריצפה ארוכה מעל ריצות קטנות
-                Floor(0, 380, 680, 20, "normal"),#ריצפה מעל 
-                Floor(0, 380, 680, 20, "normal"),#ריצפה מעל 
-                Floor(380, 250, 1000, 20, "normal"),#ריצפה מעל 
-                Floor(0, 150, 250, 20, "normal"),#ריצפה מעל 
-                Floor(800, 150, 200, 20, "normal"),#ריצפה מעל 
-                Floor(250, 779.9, 200, 20, "water"),
-                Floor(450, 779.9, 200, 20, "fire"),
-                Floor(250, 619.9, 200, 20, "fire"),
-                Floor(400, 379.9, 200, 20, "water")
-            ],
-            "doors": [
-                Door(40, 90, (255, 0, 0)),
-                Door(840, 90, (0, 0, 255))
-            ],
-            "buttons": [Button(70, 610),Button(70, 370)],#כפתורים
-            
-            "elevators": [Elevator(800, 620, 120, 20, 140)]
-        },
-        #level2
-        {
-            "start_positions": {"Fire": (0, 750), "Water": (40, 750)},
-            
-            "floors": [
-                    Floor(0, 780, 1000, 20, "normal"),#ריצפה ראשית
-                Floor(0, 700, 180, 20, "water"),#ריצפה צד ימין קטנה
-                Floor(700, 700, 100, 20, "normal"),#ריצפה צד ימין שמאל
-
-                Floor(0, 600, 100, 20, "normal"),#ריצפה מעל ריצפה קטה צד ימין
-                
-
-                Floor(0, 450, 750, 20, "normal"),#ריצפה מעל 
-                Floor(600, 449.9, 100, 20, "water"),
-                Floor(250, 320, 200, 20, "normal"),
-                Floor(550, 320, 200, 20, "normal"),
-                Floor(250, 319, 200, 20, "water"),
-                Floor(550, 319, 200, 20, "fire"),
-                
-                Floor(350, 250, 300, 20, "normal"),#ריצפה מעל 
-                
-                Floor(450, 249, 100, 20, "green"),
-
-                #ריצפות של דלתות
-                Floor(0, 150, 250, 20, "normal"),#ריצפה מעל 
-                Floor(750, 150, 250, 20, "normal"),#ריצפה מעל 
-
-                        
-                        
-                ],
-            "doors": [Door(40, 90, (255, 0, 0)),Door(840, 90, (0, 0, 255))],
-            "buttons": [Button(50, 440),Button(50, 690)],
-            "elevators": [Elevator(840, 400, 1000, 20, 500)],
-            "guns": [  # <-- Add this section
-                Gun(150, 410, direction=1),  # Slower gun from the server
-                Gun(20, 560, direction=1)    # Faster gun from the server
-            ]
-            
-        },
-        {
-            "start_positions": {"Fire": (200, 300), "Water": (750, 300)},
-            "floors": [Floor(0, 600, 1000, 20, "normal"), Floor(200, 400, 600, 20, "normal")],
-            "doors": [Door(150, 570, (255, 0, 0)), Door(780, 570, (0, 0, 255))],
-            "buttons": [Button(300, 560)],
-            "elevators": [Elevator(300, 600, 80, 20, 100)]
-        }
-    ]
+    level_manager = LevelManager()
+    levels = level_manager.levels
 
     def receive_data():
-        global player_id, role, my_player, waiting_for_players, running_game, current_level, start_time, game_over, elevator_y,encryption_key
-        #global start_time,current_level,waiting_for_players,running_game
+        global player_id, role, my_player, waiting_for_players, running_game, current_level, start_time, game_over, elevator_y, encryption_key
         encryption_key = None
         while True:
             try:
                 data, _ = client_socket.recvfrom(BUFFER_SIZE)
-                
-                message = (xor(data,encryption_key) if encryption_key else data).decode()
+                message = (xor(data, encryption_key) if encryption_key else data).decode()
 
                 if message.startswith("LEVEL:"):
                     current_level = int(message.split(":")[1])
                     if my_player:
                         pos = levels[current_level]["start_positions"][my_player.role]
                         my_player.respawn(*pos)
-
-                    # Clear the list of bullets when the level changes
                     remote_bullets.clear()
                     continue
-
 
                 if message.startswith("GAME_OVER:"):
                     total_time = float(message.split(":")[1])
@@ -192,9 +115,8 @@ def main(name,ip):
                             start_time = time.time()
                             running_game = True
             except Exception as e:
-                print(f"error occured while handling messasges: {e}")
+                print(f"error occured while handling messages: {e}")
                 continue
-
 
     threading.Thread(target=receive_data, daemon=True).start()
 
@@ -228,8 +150,7 @@ def main(name,ip):
             my_player.handle_input(keys)
             my_player.apply_gravity()
             my_player.check_floor_collision(levels[current_level]["floors"] + levels[current_level]["elevators"], levels[current_level]["start_positions"])
-        
-                    # הגבלת מיקום השחקן במסך כך שלא יוכל לצאת מעבר לגבולות
+
             if my_player.rect.x < 0:
                 my_player.rect.x = 0
             elif my_player.rect.x > screen.get_width() - my_player.rect.width:
@@ -240,7 +161,6 @@ def main(name,ip):
             elif my_player.rect.y > screen.get_height() - my_player.rect.height:
                 my_player.rect.y = screen.get_height() - my_player.rect.height
 
-
         for button in levels[current_level]["buttons"]:
             button.update([my_player])
 
@@ -250,18 +170,16 @@ def main(name,ip):
             rect = pygame.Rect(pdata["x"], pdata["y"], 25, 25)
             if rect.colliderect(door.rect):
                 standing_status[pid] = pdata["role"]
-        # ציור כדורים מהשרת ובדיקה אם פוגעים בי
+
         for bullet in remote_bullets:
             pygame.draw.rect(screen, (255, 0, 0), bullet)
             if my_player and bullet.colliderect(my_player.rect):
                 start_x, start_y = levels[current_level]["start_positions"][my_player.role]
                 my_player.respawn(start_x, start_y)
-        
-            # ציור רובים (רק ויזואלית)
+
         if "guns" in levels[current_level]:
             for gun in levels[current_level]["guns"]:
                 gun.draw(screen)
-
 
         door = levels[current_level]["doors"][my_player.player_id - 1]
         if my_player.rect.colliderect(door.rect):
@@ -282,7 +200,7 @@ def main(name,ip):
             door.draw(screen)
         if my_player:
             my_player.draw(screen)
-        
+
         for pid, pdata in players.items():
             if pid != my_player.player_id:
                 color = colors[pdata["role"]]
@@ -301,18 +219,8 @@ def main(name,ip):
             elapsed_time = time.time() - start_time
             timer_text = font.render(f"Time: {int(elapsed_time // 60):02}:{int(elapsed_time % 60):02}", True, (255, 255, 255))
             screen.blit(timer_text, (450, 30))
-        
-        
+
         pygame.display.flip()
         print(pygame.mouse.get_pos())
 
-
     pygame.quit()
-
-if __name__ == "__main__":
-    player1 = threading.Thread(target=main,args=("itay",))
-    player1.start()
-    player2 = threading.Thread(target=main,args=("sagi",))
-    player2.start()
-    while True:
-        time.sleep(1)
