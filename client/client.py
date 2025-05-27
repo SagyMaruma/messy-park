@@ -1,5 +1,3 @@
-# client.py
-
 import sys
 import os
 import socket
@@ -9,21 +7,13 @@ import threading
 import time
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'objects'))
-
 from player import Player
-from floor import Floor
-from door import Door
-from button import Button
-from elevator import Elevator
-from gun import Gun
-
 from levels import LevelManager
-
 
 def main(name, ip):
     global player_id, role, my_player, waiting_for_players, running_game
     global current_level, start_time, game_over, elevator_y, encryption_key
-    global last_hit_time, hit_cooldown, total_game_time, server_full
+    global last_hit_time, hit_cooldown, total_game_time, server_full, connection_lost
 
     def xor(data: bytes, key: bytes) -> bytes:
         return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
@@ -46,6 +36,7 @@ def main(name, ip):
     waiting_for_players = True
     game_over = False
     server_full = False
+    connection_lost = False
     total_game_time = 0
     elevator_y = 600
     last_hit_time = 0
@@ -65,7 +56,7 @@ def main(name, ip):
 
     def receive_data():
         
-        global player_id, role, my_player, waiting_for_players,start_time, total_game_time, game_over, server_full, running_game, current_level, elevator_y, encryption_key
+        global player_id, role, my_player, waiting_for_players,start_time, total_game_time, game_over, server_full, connection_lost, running_game, current_level, elevator_y, encryption_key
         encryption_key = None
 
         while True:
@@ -130,11 +121,10 @@ def main(name, ip):
                             start_time = time.time()
                             running_game = True
             except socket.error:
-                print("Lost connection to server.")
-                game_over = True
+                connection_lost = True
                 return
             except Exception as e:
-                print(f"error occured while handling messages: {e}")
+                print(f"error occurred while handling messages: {e}")
                 continue
 
     threading.Thread(target=receive_data, daemon=True).start()
@@ -152,8 +142,15 @@ def main(name, ip):
         screen.fill((30, 30, 30))
 
         if server_full:
-            screen.blit(font.render("❌ Server is full.", True, (255, 0, 0)), (370, 300))
+            screen.blit(font.render("\u274c Server is full.", True, (255, 0, 0)), (370, 300))
             screen.blit(font.render("Cannot join the game.", True, (255, 255, 255)), (320, 350))
+            pygame.display.flip()
+            continue
+
+        if connection_lost:
+            screen.fill((0, 0, 0))
+            screen.blit(font.render("\u274c Connection to server lost!", True, (255, 0, 0)), (280, 320))
+            screen.blit(font.render("Please restart the game.", True, (255, 255, 255)), (310, 370))
             pygame.display.flip()
             continue
 
@@ -176,7 +173,6 @@ def main(name, ip):
                 levels[current_level]["floors"] + levels[current_level]["elevators"],
                 levels[current_level]["start_positions"]
             )
-
             my_player.rect.x = max(0, min(screen.get_width() - my_player.rect.width, my_player.rect.x))
             my_player.rect.y = max(0, min(screen.get_height() - my_player.rect.height, my_player.rect.y))
 
