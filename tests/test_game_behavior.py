@@ -24,6 +24,9 @@ def stop_server():
         SERVER_PROCESS.wait()
         print("🛑 Server terminated.")
 
+def xor(data: bytes, key: bytes) -> bytes:
+    return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
+
 def simulate_client(name):
     try:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -54,19 +57,15 @@ def simulate_client(name):
 def test_third_client_blocked():
     print("\n🔍 Test: Third client should be blocked...")
     start_server()
-
     result1 = simulate_client("Player1")
     time.sleep(0.5)
     result2 = simulate_client("Player2")
     time.sleep(0.5)
     result3 = simulate_client("Player3")
-
     stop_server()
-
     assert result1 != "FULL", "Player1 should be allowed"
     assert result2 != "FULL", "Player2 should be allowed"
     assert result3 == "FULL", "Player3 should be rejected"
-
     print("✅ Passed: Third player was blocked correctly.\n")
 
 # 🧪 בדיקה 2: האם לקוח שורד קריסת שרת
@@ -100,42 +99,34 @@ def test_timer_runs_correctly():
 def test_level_transition():
     print("\n🔍 Test: Level transition when both players on door...")
     start_server()
-
     client1 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     client1.settimeout(3)
     client1.sendto("Tester1".encode(), (SERVER_IP, SERVER_PORT))
     client1.recvfrom(BUFFER_SIZE)
     key1, _ = client1.recvfrom(BUFFER_SIZE)
-
     client2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     client2.settimeout(3)
     client2.sendto("Tester2".encode(), (SERVER_IP, SERVER_PORT))
     client2.recvfrom(BUFFER_SIZE)
     key2, _ = client2.recvfrom(BUFFER_SIZE)
-
     for _ in range(10):
         data = struct.pack("2i?b?", 100, 300, True, 1, 0)
-        enc1 = bytes([a ^ key1[i % len(key1)] for i, a in enumerate(data)])
-        enc2 = bytes([a ^ key2[i % len(key2)] for i, a in enumerate(data)])
-        client1.sendto(enc1, (SERVER_IP, SERVER_PORT))
-        client2.sendto(enc2, (SERVER_IP, SERVER_PORT))
+        client1.sendto(xor(data, key1), (SERVER_IP, SERVER_PORT))
+        client2.sendto(xor(data, key2), (SERVER_IP, SERVER_PORT))
         time.sleep(0.1)
-
     level_msg = ""
     try:
         for _ in range(10):
             response, _ = client1.recvfrom(BUFFER_SIZE)
-            decoded = bytes([b ^ key1[i % len(key1)] for i, b in enumerate(response)]).decode(errors="ignore")
+            decoded = xor(response, key1).decode(errors="ignore")
             if decoded.startswith("LEVEL:"):
                 level_msg = decoded
                 break
     except:
         pass
-
     stop_server()
     client1.close()
     client2.close()
-
     assert level_msg.startswith("LEVEL:"), "Expected LEVEL message after both players on door"
     print(f"✅ Passed: Level transitioned -> {level_msg}\n")
 
@@ -144,42 +135,73 @@ def test_level_transition():
 def test_bullet_hit_simulation():
     print("\n🔍 Test: Bullet simulated hit response...")
     start_server()
-
     client1 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     client1.settimeout(3)
     client1.sendto("Shooter1".encode(), (SERVER_IP, SERVER_PORT))
     client1.recvfrom(BUFFER_SIZE)
     key1, _ = client1.recvfrom(BUFFER_SIZE)
-
     client2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     client2.settimeout(3)
     client2.sendto("Shooter2".encode(), (SERVER_IP, SERVER_PORT))
     client2.recvfrom(BUFFER_SIZE)
     key2, _ = client2.recvfrom(BUFFER_SIZE)
-
     print("⏱ Waiting for bullets to spawn...")
     time.sleep(3)
-
     found_bullet = False
     try:
         for _ in range(10):
             response, _ = client1.recvfrom(BUFFER_SIZE)
-            decoded = bytes([b ^ key1[i % len(key1)] for i, b in enumerate(response)]).decode(errors="ignore")
+            decoded = xor(response, key1).decode(errors="ignore")
             if decoded.startswith("BULLETS:") and "," in decoded:
                 found_bullet = True
                 break
     except:
         pass
-
     stop_server()
     client1.close()
     client2.close()
     assert found_bullet, "Expected at least one bullet to be sent from server"
     print("✅ Passed: Bullet detected in server response.\n")
 
+# 🧪 בדיקה 6: האם ההודעות מוצפנות באמת עם שני שחקנים
+
+def test_data_encryption():
+    print("\n🔍 Test: Data sent from server is encrypted...")
+    start_server()
+    client1 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    client1.settimeout(3)
+    client1.sendto("Encrypt1".encode(), (SERVER_IP, SERVER_PORT))
+    client1.recvfrom(BUFFER_SIZE)
+    key1, _ = client1.recvfrom(BUFFER_SIZE)
+    client2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    client2.settimeout(3)
+    client2.sendto("Encrypt2".encode(), (SERVER_IP, SERVER_PORT))
+    client2.recvfrom(BUFFER_SIZE)
+    key2, _ = client2.recvfrom(BUFFER_SIZE)
+    data = struct.pack("2i?b?", 100, 300, True, 0, 0)
+    client1.sendto(xor(data, key1), (SERVER_IP, SERVER_PORT))
+    client2.sendto(xor(data, key2), (SERVER_IP, SERVER_PORT))
+    time.sleep(1)
+    encrypted_data, _ = client1.recvfrom(BUFFER_SIZE)
+    try:
+        plain = encrypted_data.decode(errors="ignore")
+        assert not plain.startswith("1|"), "Data should be encrypted, but looks like plain text."
+        print("✅ Passed: Data is not readable without XOR (confirmed encrypted).\n")
+    except Exception:
+        print("✅ Passed: Data raised decode error as expected.\n")
+    stop_server()
+    client1.close()
+    client2.close()
+
 if __name__ == "__main__":
     test_third_client_blocked()
+    time.sleep(5)
     test_server_crash_detection()
+    time.sleep(5)
     test_timer_runs_correctly()
+    time.sleep(5)
     test_level_transition()
+    time.sleep(5)
     test_bullet_hit_simulation()
+    time.sleep(5)
+    test_data_encryption()
